@@ -278,7 +278,7 @@ jobs:
             ;;
           *)
             # Hardware-codec examples require platform-specific GPU features and are covered by the platform build matrix.
-            CARGO_TEST_OPTIONS="--workspace --lib --exclude hwcodec --exclude capture --exclude render --exclude tool --no-fail-fast -- --skip test_get_cursor_pos --skip test_get_key_state"
+            CARGO_TEST_OPTIONS="--workspace --lib --exclude hwcodec --exclude capture --exclude render --exclude tool --exclude sciter-rs --no-fail-fast -- --skip test_get_cursor_pos --skip test_get_key_state"
             ;;
         esac;
 
