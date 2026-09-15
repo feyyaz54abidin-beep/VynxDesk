@@ -105,7 +105,7 @@ pub struct ConnectionRoundState {
 
 impl ConnectionRoundState {
     pub fn new_round(&mut self) -> u32 {
-        self.round += 1;
+        self.round = self.round.wrapping_add(1);
         self.state = ConnectionState::Connecting;
         self.round
     }
@@ -154,6 +154,38 @@ impl Default for ChangeDisplayRecord {
             width: 0,
             height: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod connection_round_tests {
+    use super::{ConnectionRoundState, ConnectionState};
+
+    #[test]
+    fn stale_round_cannot_mark_a_new_connection_disconnected() {
+        let mut state = ConnectionRoundState::default();
+        let first_round = state.new_round();
+        let second_round = state.new_round();
+
+        assert!(first_round < second_round);
+        assert!(!state.set_disconnected(first_round));
+        assert!(matches!(state.state, ConnectionState::Connecting));
+        assert!(state.set_disconnected(second_round));
+        assert!(matches!(state.state, ConnectionState::Disconnected));
+    }
+
+    #[test]
+    fn a_round_counter_wrap_does_not_accept_the_previous_maximum_round() {
+        let mut state = ConnectionRoundState {
+            round: u32::MAX,
+            state: ConnectionState::Connected,
+        };
+
+        let wrapped_round = state.new_round();
+
+        assert_eq!(wrapped_round, 0);
+        assert!(!state.set_disconnected(u32::MAX));
+        assert!(matches!(state.state, ConnectionState::Connecting));
     }
 }
 
