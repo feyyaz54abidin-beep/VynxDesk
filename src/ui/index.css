@@ -1,0 +1,740 @@
+html {
+    background-color: transparent;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+}
+
+body {
+    overflow: hidden;
+}
+
+@media platform != "OSX" {
+    body {
+        border-top: color(border) solid 1px;
+    }
+}
+
+.title {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    letter-spacing: 0.5px;
+}
+
+.vynx-brand-box {
+    margin-bottom: 1.2em;
+    padding-bottom: 0.8em;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.25);
+    flow: horizontal;
+    vertical-align: middle;
+}
+
+.vynx-brand-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+}
+
+.vynx-brand-text {
+    flow: vertical;
+}
+
+.vynx-brand-vyn {
+    color: #ffffff;
+    font-size: 1.25em;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.vynx-brand-x {
+    color: #00f0ff;
+    font-size: 1.4em;
+    font-weight: 900;
+    margin: 0 1px;
+    text-shadow: 0 0 12px #a855f7, 0 0 4px #00f0ff;
+}
+
+.vynx-brand-desk {
+    color: #cbd5e1;
+    font-size: 1.25em;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.vynx-brand-sub {
+    color: #94a3b8;
+    font-size: 0.6em;
+    letter-spacing: 1.8px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.app {
+    flow: horizontal;
+    size: *;
+}
+
+.lighter-text {
+    color: color(lighter-text);
+    font-size: 0.9em;
+}
+
+.left-pane {
+    width: 260px;
+    height: *;
+    background: color(bg);
+    border-right: color(border) 1px solid;
+    position: relative;
+    box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
+}
+
+#ab .left-pane {
+    border-radius: 1em;
+    padding: 1em;
+}
+
+#ab .right-pane {
+    background: none;
+}
+
+#ab .right-content {
+    overflow: unset;
+}
+
+.left-pane > div:nth-child(1) {
+    border-spacing: 1em;
+    padding: 20px;
+    padding-bottom: 60px; /* reserve space for bottom connect-status */
+}
+
+.left-pane > div.connect-status {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.left-pane div {
+  word-wrap: break-word;
+}
+
+div.sessions-bar {
+    color: color(light-text);
+    padding-top: 0.5em;
+    border-top: color(border) solid 1px;
+    margin-bottom: 1em;
+    position: relative;
+    flow: horizontal;
+}
+
+div.sessions-tab span {
+    display: inline-block;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: #94a3b8;
+    border-radius: 6px;
+    margin-right: 4px;
+    @ELLIPSIS;
+}
+
+div.sessions-tab span:hover {
+    color: #ffffff;
+    background: rgba(0, 240, 255, 0.08);
+}
+
+div.sessions-tab svg {
+    size: 14px;
+}
+
+div.sessions-tab span.active {
+    cursor: default;
+    background: rgba(0, 240, 255, 0.15);
+    color: #00f0ff;
+    font-weight: 600;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+div.search-id {
+    width: 140px;
+    padding: 0;
+    position: relative;
+    display: inline-block;
+}
+
+div.search-id input {
+    font-size: 0.9em;
+    height: 24px;
+    border: 1px solid #1a2744;
+    background: #070a12;
+    border-radius: 6px;
+    padding-left: 28px;
+    color: #ffffff;
+}
+
+div.search-id input:focus {
+    border-color: #00f0ff;
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+}
+
+div.search-id span {
+    position: absolute;
+    top: 0px;
+    padding: 6px;
+    color: color(border);
+}
+
+div.search-id svg {
+    size: 14px;
+}
+
+span.search-icon {
+    left: 0px;
+}
+
+span.clear-input {
+    display: none;
+    right: 0px;
+}
+
+div.search-id:hover span.clear-input {
+    display: inline-block;
+}
+
+span.clear-input:hover {
+    color: black;
+}
+
+.your-desktop {
+    border-spacing: 0.5em;
+    border-left: color(accent) solid 3px;
+    box-shadow: inset 4px 0 10px -4px rgba(0, 240, 255, 0.4);
+    padding-left: 0.7em;
+    margin-top: 0.5em;
+}
+
+.your-desktop input[type=text] {
+    padding: 2px 6px;
+    border: 1px solid #1a2744;
+    background: #070a12;
+    border-radius: 4px;
+    color: #00f0ff;
+    font-weight: bold;
+    letter-spacing: 1px;
+    height: 1.5em;
+}
+
+.your-desktop > div {
+    color: color(light-text);
+}
+
+.right-pane {
+    size: *;
+    background: color(gray-bg);
+}
+
+.right-content {
+    overflow: scroll-indicator;
+    padding: 1.6em;
+    border-spacing: 1.6em;
+    size: *;
+    flow: vertical;
+}
+
+@media platform == "OSX" {
+    .right-pane {
+        background: color(gray-bg-osx);
+    }
+}
+
+@mixin CARD {
+    padding: 1.6em;
+    border-spacing: 1em;
+    background: #0c1220;
+    border: 1px solid #1a2744;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.card-connect {
+    @CARD;
+    width: 320px;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.card-connect:hover {
+    border-color: #00f0ff;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 240, 255, 0.3), 0 0 35px rgba(168, 85, 247, 0.2);
+}
+
+.right-buttons {
+    text-align: right;
+}
+
+.right-buttons>button {
+    margin-left: 1.6em;
+}
+
+div.connect-status {
+    position: absolute;
+    bottom: 0;
+    left: 260px;
+    right: 0;
+    border-top: 1px solid #1a2336;
+    background: #070a12;
+    padding: 10px 20px;
+    font-size: 0.9em;
+    color: #94a3b8;
+}
+
+div.connect-status > span.connect-status-icon {
+    border-radius: 50%;
+    width: 9px;
+    height: 9px;
+    display: inline-block;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+div.connect-status > span.link {
+    margin-left: 0.6em;
+    display: inline-block;
+    color: #00f0ff;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+div.connect-status > span.link:hover {
+    color: #a855f7;
+    text-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+
+span.connect-status-1 {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+span.connect-status1 {
+    background: #00f0ff;
+    box-shadow: 0 0 8px #00f0ff;
+}
+
+span.connect-status0 {
+    background: #a855f7;
+    box-shadow: 0 0 8px #a855f7;
+}
+
+div.recent-sessions-content {
+    border-spacing: 1em;
+    flow: horizontal-flow;
+}
+
+div.remote-session {
+    border-radius: 1em;
+    height: 140px;
+    width: 220px;
+    padding: 0;
+    position: relative;
+    background: #0f1422;
+    border: #1a2336 solid 1px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+div.remote-session:hover, div.remote-session-list:hover {
+    border: #00f0ff solid 1px;
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+}
+
+div.remote-session .platform {
+    width: *;
+    height: 120px;
+    padding: *;
+    position: relative;
+}
+
+div.remote-session .platform .username{
+    left: 0;
+    color: #eee;
+    position: absolute;
+    bottom: 38px;
+    font-size: 0.8em;
+    width: 220px;
+    text-align: center;
+}
+
+div.remote-session .platform svg {
+    width: 60px;
+    height: 60px;
+    background: none;
+}
+
+div.remote-session-list {
+    background: color(bg);
+    width: 220px;
+    flow: horizontal;
+}
+
+div.remote-session-list .platform {
+    size: 42px;
+}
+
+div.remote-session-list .platform svg {
+    width: 30px;
+    height: 30px;
+    background: none;
+    padding: 6px;
+}
+
+div.remote-session-list .name {
+    size: *;
+    padding-left: 1em;
+}
+
+div.remote-session-list .name >div {
+    margin-top: *;
+    margin-bottom: *;
+    width: *;
+}
+
+div.remote-session-list .name .username {
+    margin-top: 3px;
+    font-size: 0.8em;
+    color: color(lighter-text);
+}
+
+div.remote-session .text {
+    background: color(bg);
+    position: absolute;
+    height: 3em;
+    width: 100%;
+    border-radius: 0 0 1em 1em;
+    bottom: 0;
+    flow: horizontal;
+}
+
+div.remote-session .text > div {
+    padding-top: 1em;
+    padding-left: 1em;
+    width: *;
+}
+
+svg#menu {
+    size: 1em;
+    background: none;
+    padding: 0.5em;
+    margin: 0.5em;
+    color: color(light-text);
+}
+
+.remote-session-list svg#menu {
+    margin-right: 0;
+}
+
+svg#menu:hover {
+    color: color(text);
+    border-radius: 1em;
+    background: color(gray-bg);
+}
+
+svg#edit:hover {
+    color: color(text);
+}
+
+svg#edit {
+    display: inline-block;
+}
+
+div.install-me, div.trust-me {
+    margin-top: 1em;
+    padding: 14px;
+    color: #cbd5e1;
+    background: #0e1526;
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.install-me-title {
+    font-size: 1.05em;
+    font-weight: bold;
+    color: #00f0ff;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.install-me-desc {
+    line-height: 1.4em;
+    font-size: 0.85em;
+    color: #94a3b8;
+    margin-bottom: 12px;
+}
+
+.install-me-btn button {
+    width: 100%;
+    height: 2.3em;
+    line-height: 2.3em;
+    font-size: 0.95em;
+}
+
+div.trust-me > div:nth-child(1) {
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 0.5em;
+    color: #00f0ff;
+}
+
+#install-me.link {
+    margin-top: 0.5em;
+}
+
+div.trust-me > div:nth-child(2) {
+    font-size: 0.9em;
+    margin-bottom: 1em;
+}
+
+div.trust-me > div:nth-child(3) {
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+div.trust-me > div:nth-child(4),
+div.trust-me > div:nth-child(5) {
+    margin-top: 0.5em;
+    text-align: center;
+}
+
+div#myid, div#tags-label {
+    position: relative;
+}
+
+div#myid svg#menu, div#tags-label svg#menu {
+    position: absolute;
+    right: -1em;
+}
+
+div#tags-label svg#menu:hover {
+    background-color: #ddd;
+}
+
+div.remote-session svg#menu {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.install-me .button {
+    height: 2.2em;
+    line-height: 2.2em;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-top: 10px;
+    border: 1px solid #00f0ff;
+    background: linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%);
+    color: #070a12;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+}
+
+.install-me .button:hover {
+    background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%);
+    color: #ffffff;
+    border-color: #a855f7;
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.5);
+}
+
+.vynx-empty-state {
+    margin: *;
+    text-align: center;
+    width: 320px;
+    padding: 2em;
+    flow: vertical;
+}
+
+.vynx-empty-icon {
+    margin: 0 * 14px *;
+    display: block;
+}
+
+.vynx-empty-title {
+    color: #cbd5e1;
+    font-size: 1.25em;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.vynx-empty-desc {
+    color: #64748b;
+    font-size: 0.85em;
+    line-height: 1.4em;
+}
+
+svg#refresh-password {
+    display: inline-block;
+    stroke:#ddd;
+}
+
+svg#refresh-password:hover {
+    stroke:color(text);
+}
+
+li:disabled, li:disabled:hover {
+    color: color(lighter-text);
+    background: color(menu);
+    opacity: 0.8;
+}
+
+.grey-text {
+    color: #888 !important;
+}
+
+input.grey-text,
+textarea.grey-text {
+    color: #888 !important;
+}
+
+@media platform == "OSX" {
+    div.eye-area > input {
+        font-size: 1em;
+    }
+}
+
+/* Home-only styling keeps remote-session controls and dialogs independent. */
+html.vynx-home body { background: #090b12; }
+html.vynx-home input, html.vynx-home button {
+    font-family: "Segoe UI", sans-serif;
+}
+.vynx-home .left-pane {
+    width: 260px;
+    background: #10131e;
+    border-right: 1px solid #252b3e;
+    box-shadow: none;
+}
+.vynx-home .left-pane > div:nth-child(1) { padding: 26px 22px 60px; }
+.vynx-home .vynx-brand-box {
+    padding-bottom: 24px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #293047;
+}
+.vynx-home .vynx-brand-icon { size: 38px; margin-right: 12px; }
+.vynx-home .vynx-brand-vyn, .vynx-home .vynx-brand-desk {
+    font-size: 19px;
+    text-shadow: none;
+}
+.vynx-home .vynx-brand-x { font-size: 21px; text-shadow: none; }
+.vynx-home .vynx-brand-sub { font-size: 9px; letter-spacing: 2px; color: #a3abc2; }
+.vynx-home .title { font-size: 20px; letter-spacing: 0; text-shadow: none; }
+.vynx-home .lighter-text { color: #a3abc2; font-size: 13px; line-height: 1.5em; }
+.vynx-home .your-desktop {
+    background: #171c2a;
+    border: 1px solid #2b344c;
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 16px;
+    box-shadow: none;
+}
+.vynx-home .your-desktop input[type=text] {
+    background: #101521;
+    color: #66e7e3;
+    border: 1px solid #303c56;
+    height: 34px;
+    font-size: 19px;
+    border-radius: 6px;
+}
+.vynx-home .right-pane { background: #090b12; }
+.vynx-home .right-content { padding: 28px 28px 64px; border-spacing: 28px; }
+.vynx-home .card-connect {
+    width: *;
+    padding: 26px;
+    border-radius: 16px;
+    border: 1px solid #3b4163;
+    background: linear-gradient(120deg, #202540, #141a29);
+    box-shadow: none;
+    border-spacing: 18px;
+}
+.vynx-home .card-connect:hover { border-color: #61618c; box-shadow: none; }
+.vynx-home .card-connect .title { font-size: 26px; font-weight: 600; }
+.vynx-home .vynx-eyebrow { color: #7eeee6; font-size: 11px; letter-spacing: 3px; }
+.vynx-home .card-connect input {
+    height: 46px;
+    font-size: 22px;
+    padding: 0 14px;
+    border-radius: 9px;
+    background: #0e1320;
+    border: 1px solid #39435e;
+}
+.vynx-home .right-buttons > button { margin-left: 10px; }
+.vynx-home button.button {
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    background: #62e2dc;
+    color: #0a2028;
+    border: 1px solid #62e2dc;
+    box-shadow: none;
+}
+.vynx-home button.button:hover { background: #9af1eb; border-color: #9af1eb; }
+.vynx-home button.outline { background: #20283c; border-color: #485273; color: #e4e8fa; }
+.vynx-home button.outline:hover { background: #303955; border-color: #9b8bef; }
+.vynx-home div.sessions-bar {
+    flow: vertical;
+    border: none;
+    padding-top: 0;
+    border-spacing: 14px;
+}
+.vynx-home #sessions-type { flow: horizontal; width: *; }
+.vynx-home #sessions-type span {
+    width: max-content;
+    max-width: 10000px !important;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    padding: 9px 12px;
+    margin: 0 6px 4px 0;
+    border: 1px solid transparent;
+    font-size: 13px;
+}
+.vynx-home #sessions-type span.active {
+    background: #25223e;
+    border-color: #60578a;
+    color: #d5c8ff;
+    box-shadow: none;
+}
+.vynx-home .session-tools { flow: horizontal; width: *; vertical-align: middle; }
+.vynx-home div.search-id { width: *; }
+.vynx-home div.search-id input { height: 30px; font-size: 13px; border-color: #2d354b; }
+.vynx-home div.remote-session {
+    width: 220px;
+    height: 162px;
+    background: #151b2a !important;
+    border: 1px solid #30394f;
+    border-radius: 12px;
+    box-shadow: none;
+}
+.vynx-home div.remote-session .platform {
+    background: #1b2338 !important;
+    height: 120px;
+    padding: 0;
+}
+.vynx-home div.remote-session .platform svg { size: 40px; color: #b7a4ff; margin: 22px * 0; }
+.vynx-home div.remote-session .platform .username { bottom: 14px; color: #c6cede; font-size: 12px; }
+.vynx-home div.remote-session .text { background: #151b2a; height: 42px; }
+.vynx-home div.remote-session:hover { border-color: #7ce7df; box-shadow: none; }
+.vynx-home div.connect-status { background: #111622; border-color: #283147; padding: 13px 22px; }
+.vynx-home div.install-me, .vynx-home div.trust-me {
+    margin: 16px;
+    border: 1px solid #414467;
+    background: #1b2032;
+    box-shadow: none;
+}

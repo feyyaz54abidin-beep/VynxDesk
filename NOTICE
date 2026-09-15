@@ -1,0 +1,14 @@
+VynxDesk
+Copyright (C) 2026 VynxDesk contributors
+
+VynxDesk is based on RustDesk, originally developed by the RustDesk project and
+its contributors. RustDesk and the RustDesk logo are the property of their
+respective owners. VynxDesk is not represented as an official RustDesk release.
+
+This program is free software licensed under the GNU Affero General Public
+License, version 3 or any later version. The complete license text is in the
+LICENCE file. Distribution of object code must be accompanied by access to the
+complete corresponding source code for that exact version as required by the
+license.
+
+Third-party components retain their respective copyright notices and licenses.

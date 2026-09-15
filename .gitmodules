@@ -1,0 +1,7 @@
+[submodule "libs/hbb_common"]
+	path = libs/hbb_common
+	url = https://github.com/rustdesk/hbb_common
+
+[submodule "libs/hwcodec/externals"]
+	path = libs/hwcodec/externals
+	url = https://github.com/rustdesk-org/externals.git

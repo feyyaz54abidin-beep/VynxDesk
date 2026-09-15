@@ -1,0 +1,230 @@
+/* Vynx launcher: a single canvas, independent of the legacy two-pane layout. */
+.vynx-home .vynx-launcher {
+    size: *;
+    flow: vertical;
+    background: #060c14;
+    color: #f6f4fc;
+    font-family: "Segoe UI", sans-serif;
+}
+.vynx-launcher .launch-topbar {
+    flow: horizontal;
+    vertical-align: middle;
+    height: 58px;
+    padding: 0 32px;
+    border-bottom: 1px solid #243046;
+    background: #070d16;
+}
+.vynx-launcher .launch-brand { flow: horizontal; vertical-align: middle; border-spacing: 8px; }
+.vynx-launcher .launch-brand > span { font-size: 25px; font-weight: 800; letter-spacing: 3px; }
+.vynx-launcher .launch-brand > .launch-brand-detail { color: #768490; font-size: 10px; letter-spacing: 2px; margin-top: 10px; }
+.vynx-launcher .launch-top-caption { margin-left: 28px; width: *; color: #697983; font-size: 10px; letter-spacing: 2px; }
+.vynx-launcher .launch-settings {
+    background: transparent;
+    border: 1px solid #34404a;
+    border-radius: 6px;
+    padding: 9px 14px;
+    color: #ced8de;
+    font-size: 13px;
+    cursor: pointer;
+}
+.vynx-launcher .launch-settings span { margin-left: 10px; color: #993dff; }
+.vynx-launcher .launch-settings:hover { background: #222e37; border-color: #993dff; }
+.vynx-launcher .launch-content {
+    flow: vertical;
+    size: *;
+    padding: 16px 28px 12px;
+    overflow-y: scroll-indicator;
+    overflow-x: hidden;
+}
+.vynx-launcher .launch-hero { flow: horizontal; vertical-align: middle; height: 124px; padding: 10px 18px; border-radius: 10px; background: #080d1a url(../../res/vynx-theme/terrain-middle.webp) no-repeat right bottom; background-size: auto 100%; }
+.vynx-launcher .launch-hero-copy { width: *; }
+.vynx-launcher .launch-kicker { color: #8b9caa; font-size: 10px; letter-spacing: 3px; margin-bottom: 16px; }
+.vynx-launcher .launch-headline { font-size: 34px; font-weight: 700; letter-spacing: -1px; line-height: 1.2em; }
+.vynx-launcher .launch-headline span { color: #b769ff; display: inline-block; padding-left: 8px; }
+.vynx-launcher .launch-subtitle { color: #b6bfd4; font-size: 14px; margin-top: 12px; }
+.vynx-launcher .launch-connect { padding: 16px 0 18px; }
+.vynx-launcher .launch-id-label { color: #aebdc6; font-size: 12px; margin-bottom: 10px; }
+.vynx-launcher .launch-form {
+    flow: horizontal;
+    vertical-align: middle;
+    height: 44px;
+    border: 1px solid #493168;
+    border-left: 3px solid #993dff;
+    border-radius: 8px;
+    background: #0a111b;
+    padding: 6px;
+    border-spacing: 6px;
+}
+.vynx-launcher .launch-input-symbol { color: #34dbf5; size: 26px; margin: 0 12px; }
+.vynx-home .vynx-launcher #remote_id {
+    width: *;
+    height: 44px;
+    min-width: 160px;
+    border: none;
+    border-radius: 4px;
+    background: #0a111b;
+    color: #f4f8fa;
+    font-family: "Consolas", monospace;
+    font-size: 25px;
+    letter-spacing: 1px;
+    padding: 0 10px;
+    box-shadow: none;
+}
+.vynx-home .vynx-launcher #remote_id:focus { background: #15142a; box-shadow: inset 0 -2px #993dff; }
+.vynx-launcher .launch-connect-button {
+    height: 44px;
+    padding: 0 22px;
+    border: 1px solid #993dff;
+    border-radius: 5px;
+    background: linear-gradient(120deg, #8830f8, #9132ff, #7c29ed);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.vynx-launcher .launch-connect-button span { margin-left: 20px; font-size: 20px; }
+.vynx-launcher .launch-connect-button:hover { background: #a04aff; border-color: #c282ff; }
+.vynx-launcher .launch-transfer {
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid #3e4c55;
+    border-radius: 5px;
+    background: #202b33;
+    color: #c2cdd5;
+    cursor: pointer;
+    font-size: 13px;
+}
+.vynx-launcher .launch-transfer:hover { border-color: #c282ff; color: #ddd3ff; }
+.vynx-launcher .launch-library { flow: vertical; height: 232px; margin-bottom: 18px; }
+.vynx-launcher .launch-section-heading { color: #e3eaf0; font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+.vynx-launcher .launch-section-number { color: #993dff; font-size: 10px; font-family: "Consolas", monospace; display: inline-block; padding-right: 12px; }
+.vynx-home .vynx-launcher div.sessions-bar { margin-bottom: 14px; border-spacing: 9px; }
+.vynx-home .vynx-launcher #sessions-type span {
+    padding: 5px 10px;
+    margin: 0 14px 0 0;
+    border-radius: 0;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 12px;
+    background: transparent;
+    color: #b6bfd4;
+    box-shadow: none;
+}
+.vynx-home .vynx-launcher #sessions-type span.active { color: #c282ff; border-bottom-color: #993dff; }
+.vynx-home .vynx-launcher .session-tools { flow: horizontal; }
+.vynx-home .vynx-launcher div.search-id input { height: 26px; background: #10171e; border-color: #29343e; box-shadow: none; }
+.vynx-home .vynx-launcher .session-tools .sessions-tab span { padding: 4px 8px; box-shadow: none; border-radius: 4px; }
+.vynx-home .vynx-launcher .recent-sessions-content { height: *; overflow-y: scroll-indicator; border-spacing: 12px; }
+.vynx-launcher .launch-device {
+    flow: vertical;
+    width: 216px;
+    height: 96px;
+    padding: 14px;
+    border: 1px solid #34304e;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0d1523, #0a101b);
+    position: relative;
+    cursor: pointer;
+}
+.vynx-launcher .launch-device:hover { border-color: #c282ff; background: #222b3b; }
+.vynx-launcher .launch-device-top { flow: horizontal; vertical-align: middle; height: 30px; margin-bottom: 8px; }
+.vynx-launcher .launch-device-icon { size: 28px; color: #b8a7f5; }
+.vynx-launcher .launch-device-platform { width: *; color: #96a9b6; font-size: 10px; margin-left: 10px; letter-spacing: 1px; }
+.vynx-launcher .launch-device-top svg#menu { margin: 0; padding: 5px; }
+.vynx-launcher .launch-device-alias { font-size: 19px; font-weight: 600; width: 170px; }
+.vynx-launcher .launch-device-host { color: #91a0ad; font-size: 12px; margin-top: 8px; width: 165px; }
+.vynx-launcher .launch-device-open {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    size: 30px;
+    border: 1px solid #455166;
+    border-radius: 5px;
+    background: #2a3548;
+    color: #d8d0ff;
+    font-size: 21px;
+    cursor: pointer;
+}
+.vynx-launcher .launch-device-open:hover { background: #c282ff; color: #141424; }
+.vynx-home .vynx-launcher .remote-session-list { border: 1px solid #34304e; border-radius: 6px; background: #17212a; }
+.vynx-home .vynx-launcher .remote-session-list .platform { background: #303147 !important; }
+.vynx-launcher .launch-local {
+    flow: horizontal;
+    vertical-align: middle;
+    padding: 16px;
+    border: 1px solid #243046;
+    border-radius: 8px;
+    background: #0a111b;
+    border-spacing: 20px;
+}
+.vynx-launcher .launch-local-copy { width: *; min-width: 170px; }
+.vynx-launcher .launch-local .launch-section-heading { font-size: 14px; margin-bottom: 9px; }
+.vynx-launcher .launch-local-description { color: #8397a3; font-size: 11px; line-height: 1.5em; max-width: 240px; }
+.vynx-home .vynx-launcher .launch-local .your-desktop {
+    width: 200px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 11px;
+    border-spacing: 10px;
+}
+.vynx-home .vynx-launcher .launch-local .your-desktop input {
+    font-family: "Consolas", monospace;
+    font-size: 19px;
+    height: 32px;
+    background: #0c141b;
+    border: 1px solid #34434e;
+    color: #d7e5e8;
+    box-shadow: none;
+}
+.vynx-launcher .launch-generating { color: #95a9b6; height: 32px; padding-top: 6px; }
+.vynx-home .vynx-launcher .launch-notices { margin-top: 12px; }
+.vynx-home .vynx-launcher .launch-notices .install-me,
+.vynx-home .vynx-launcher .launch-notices .trust-me {
+    width: *;
+    margin: 0 0 10px;
+    padding: 12px 18px;
+    border: 1px solid #4a4054;
+    background: #211f2a;
+    color: #c6bacf;
+    border-radius: 6px;
+    font-size: 12px;
+}
+.vynx-launcher .launch-footer {
+    height: 42px;
+    flow: horizontal;
+    vertical-align: middle;
+    padding: 0 32px;
+    background: #070d16;
+    border-top: 1px solid #25303a;
+}
+.vynx-home .vynx-launcher .launch-footer div.connect-status {
+    position: static;
+    width: *;
+    height: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: 11px;
+}
+.vynx-launcher .launch-footer-brand { font-size: 9px; letter-spacing: 2px; color: #70838f; }
+.vynx-home .vynx-launcher .vynx-empty-state { width: *; padding: 12px; }
+.vynx-home .vynx-launcher .vynx-empty-icon { size: 32px; margin-bottom: 6px; }
+.vynx-home .vynx-launcher .vynx-empty-title { font-size: 15px; }
+@media width < 900px {
+    .vynx-launcher .launch-headline { font-size: 32px; }
+    .vynx-launcher .launch-local { border-spacing: 14px; padding: 16px; }
+    .vynx-home .vynx-launcher .launch-local .your-desktop { width: 180px; }
+}
+
+
+.vynx-launcher .launch-site-logo { width: 112px; height: 32px; }
+.vynx-launcher .launch-site-art { width: 148px; height: 118px; position: relative; margin-left: 8px; }
+.vynx-launcher .launch-site-art img { position: absolute; width: 115px; height: 115px; right: 0; top: 0; opacity: 0.8; }
+.vynx-launcher .launch-site-art span { position: absolute; bottom: 2px; left: 0; color: #c899fb; font-family: "Segoe Print", cursive; font-size: 18px; line-height: 1em; transform: rotate(-9deg); }
+.vynx-launcher .launch-pill-dot { display: inline-block; size: 5px; border-radius: 50%; background: #993dff; margin-right: 8px; box-shadow: 0 0 7px #993dff; }
+.vynx-launcher .launch-headline { white-space: nowrap; }
+.vynx-launcher .launch-device .launch-device-open { min-width: 30px; padding: 0; }
