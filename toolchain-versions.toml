@@ -1,0 +1,12 @@
+[build]
+application_rust = "1.88"
+legacy_sciter_rust = "1.75"
+flutter = "3.24.5"
+android_flutter = "3.24.5"
+windows_arm_flutter = "3.44.9"
+bridge_default_flutter = "3.22.3"
+bridge_windows_arm_flutter = "3.44.8"
+flutter_rust_bridge_rust = "=1.80"
+flutter_rust_bridge_codegen = "1.80.1"
+vcpkg_baseline = "9e593bb18ea69cc5095e012465dcd675a822ed0d"
+cargo_audit = "0.22.2"

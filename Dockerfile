@@ -39,7 +39,8 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.30.6/cmake-3.30.6
     make && \
     make install
 
-RUN git clone --branch 2023.04.15 --depth=1 https://github.com/microsoft/vcpkg && \
+RUN git clone https://github.com/microsoft/vcpkg && \
+    git -C /vcpkg checkout 9e593bb18ea69cc5095e012465dcd675a822ed0d && \
     /vcpkg/bootstrap-vcpkg.sh -disableMetrics && \
     /vcpkg/vcpkg --disable-metrics install libvpx libyuv opus aom
 

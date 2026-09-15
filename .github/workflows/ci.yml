@@ -3,6 +3,7 @@ name: CI
 env:
 #   MIN_SUPPORTED_RUST_VERSION: "1.46.0"
 #   CICD_INTERMEDIATES_DIR: "_cicd-intermediates"
+  RUST_VERSION: "1.88"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # for multiarch gcc compatibility
   VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
@@ -25,6 +26,24 @@ on:
       - "flatpak/**"
 
 jobs:
+  dependency-audit:
+    name: RustSec dependency audit
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+      with:
+        toolchain: ${{ env.RUST_VERSION }}
+
+    - name: Install cargo-audit
+      run: cargo install cargo-audit --version 0.22.2 --locked
+
+    - name: Scan Cargo.lock for RustSec advisories
+      run: cargo audit
+
   # ensure_cargo_fmt:
   #   name: Ensure 'cargo fmt' has been run
   #   runs-on: ubuntu-20.04
@@ -110,6 +129,10 @@ jobs:
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         submodules: recursive
+        fetch-depth: 0
+
+    - name: Verify build contract
+      run: python3 scripts/check_build_contract.py
 
     - name: Install prerequisites
       shell: bash
@@ -158,9 +181,9 @@ jobs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
       with:
-        toolchain: stable
+        toolchain: ${{ env.RUST_VERSION }}
         targets: ${{ matrix.job.target }}
-        components: ''
+        components: rustfmt, clippy
 
     - name: Show version information (Rust, cargo, GCC)
       shell: bash
@@ -172,6 +195,16 @@ jobs:
         cargo -V
         rustc -V
 
+    - name: Check new Rust files and diff whitespace
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        mapfile -t new_rust_files < <(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}"...HEAD -- '*.rs')
+        if ((${#new_rust_files[@]})); then
+          rustfmt --edition 2021 --check "${new_rust_files[@]}"
+        fi
+        git diff --check "origin/${{ github.base_ref }}"...HEAD
+
     - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
     - name: Build
@@ -180,6 +213,12 @@ jobs:
         use-cross: ${{ matrix.job.use-cross }}
         command: build
         args: --locked --target=${{ matrix.job.target }}
+
+    - name: Check changed Rust code with Clippy
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        python3 scripts/check_changed_clippy.py --base "origin/${{ github.base_ref }}"
 
     - name: clean
       shell: bash
