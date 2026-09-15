@@ -78,6 +78,10 @@ jobs:
         shell: bash
         run: $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
 
+      - name: Generate inline UI source
+        shell: bash
+        run: python res/inline-sciter.py
+
       - name: Build release Rust library
         shell: bash
         run: cargo build --locked --release --features flutter

@@ -2567,11 +2567,11 @@ impl Drop for SessionIdleInhibit {
     }
 }
 
-pub struct WakeLock(Option<keepawake::AwakeHandle>, Option<SessionIdleInhibit>);
+pub struct WakeLock(Option<keepawake::KeepAwake>, Option<SessionIdleInhibit>);
 
 impl WakeLock {
     pub fn new(display: bool, idle: bool, sleep: bool) -> Self {
-        match keepawake::Builder::new()
+        match keepawake::Builder::default()
             .display(display)
             .idle(idle)
             .sleep(sleep)
@@ -2586,7 +2586,7 @@ impl WakeLock {
                 // if it fails, losing the logind idle/sleep inhibits that stop the HOST suspending
                 // mid-session. Re-ask without the display part: those are on the system bus.
                 let system = if idle || sleep {
-                    match keepawake::Builder::new()
+                    match keepawake::Builder::default()
                         .display(false)
                         .idle(idle)
                         .sleep(sleep)

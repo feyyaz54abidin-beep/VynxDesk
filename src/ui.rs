@@ -893,7 +893,9 @@ pub fn value_crash_workaround(values: &[Value]) -> Arc<Vec<Value>> {
 }
 
 pub fn get_icon() -> String {
-    use hbb_common::base64::{engine::general_purpose::STANDARD, Engine as _};
-    format!("data:image/png;base64,{}", STANDARD.encode(include_bytes!("../res/vynx-app-128.png")))
+    format!(
+        "data:image/png;base64,{}",
+        include_str!("../res/vynx_icon_b64.txt").trim()
+    )
 }
 

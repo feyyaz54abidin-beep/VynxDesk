@@ -207,6 +207,10 @@ jobs:
 
     - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
+    - name: Generate inline UI source
+      shell: bash
+      run: python3 res/inline-sciter.py
+
     - name: Build
       uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1
       with:
