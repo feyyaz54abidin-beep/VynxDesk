@@ -2071,7 +2071,7 @@ pub fn elevate(args: Vec<&str>, prompt: &str) -> ResultType<bool> {
     }
 }
 
-pub struct WakeLock(Option<keepawake::KeepAwake>);
+pub struct WakeLock(Option<keepawake::KeepAwake>, bool, bool);
 
 impl WakeLock {
     pub fn new(display: bool, idle: bool, sleep: bool) -> Self {
@@ -2082,14 +2082,23 @@ impl WakeLock {
                 .sleep(sleep)
                 .create()
                 .ok(),
+            idle,
+            sleep,
         )
     }
 
     pub fn set_display(&mut self, display: bool) -> ResultType<()> {
-        self.0
-            .as_mut()
-            .map(|h| h.set_display(display))
-            .ok_or(anyhow!("no wake lock"))?
+        if self.0.is_none() {
+            bail!("no wake lock");
+        }
+        let wake_lock = keepawake::Builder::default()
+            .display(display)
+            .idle(self.1)
+            .sleep(self.2)
+            .create()
+            .map_err(|err| anyhow!(err))?;
+        self.0 = Some(wake_lock);
+        Ok(())
     }
 }
 
