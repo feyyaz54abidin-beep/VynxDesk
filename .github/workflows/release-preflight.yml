@@ -1,0 +1,83 @@
+name: Release preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUST_VERSION: "1.88"
+  VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
+
+jobs:
+  release-contract:
+    name: Validate production release contract
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      VYNXDESK_RENDEZVOUS_SERVER: ${{ secrets.VYNXDESK_RENDEZVOUS_SERVER }}
+      VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ secrets.VYNXDESK_RENDEZVOUS_PUB_KEY }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify build and release contracts
+        shell: bash
+        run: |
+          python scripts/check_build_contract.py
+          python scripts/check_release_contract.py --require-release-env --verify-hbb-remote
+
+  generate-bridge:
+    needs: [release-contract]
+    uses: ./.github/workflows/bridge.yml
+
+  release-build:
+    name: Build production release Rust library
+    needs: [release-contract, generate-bridge]
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      VYNXDESK_RENDEZVOUS_SERVER: ${{ secrets.VYNXDESK_RENDEZVOUS_SERVER }}
+      VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ secrets.VYNXDESK_RENDEZVOUS_PUB_KEY }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Install cargo-audit
+        shell: bash
+        run: cargo install cargo-audit --version 0.22.2 --locked
+
+      - name: Scan dependencies
+        shell: bash
+        run: cargo audit
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+
+      - name: Install native dependencies
+        shell: bash
+        run: $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
+
+      - name: Build release Rust library
+        shell: bash
+        run: cargo build --locked --release --features flutter

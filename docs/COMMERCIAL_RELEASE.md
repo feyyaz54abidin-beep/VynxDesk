@@ -50,6 +50,18 @@ powershell -ExecutionPolicy Bypass -File .\res\commercial-release.ps1 `
   -AllowUnsigned
 ```
 
+Before packaging a customer build, run the manual `Release preflight` GitHub
+Actions workflow. It validates the protected rendezvous inputs, verifies that
+the exact `hbb_common` gitlink can be fetched by a clean runner, runs the
+RustSec scan, and performs a locked release Rust build. The workflow does not
+publish an artifact. The equivalent local source and submodule check is:
+
+```powershell
+python .\scripts\check_release_contract.py `
+  --require-release-env `
+  --verify-hbb-remote
+```
+
 The generated package includes `install-vynxdesk.ps1`. Running it as an
 administrator installs the Windows service needed for unattended access, UAC and
 headless virtual-display support.

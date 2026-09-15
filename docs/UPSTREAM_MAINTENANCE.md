@@ -57,9 +57,9 @@ python scripts/check_build_contract.py
 ```
 
 The checker validates the root manifest, CI workflows, Flutter bridge workflow,
-vcpkg manifest, Docker build, and developer README. Update all dependent
-values in one reviewed change, then regenerate or validate generated bridge
-artifacts with the matching bridge workflow.
+release preflight workflow, vcpkg manifest, Docker build, and developer README.
+Update all dependent values in one reviewed change, then regenerate or validate
+generated bridge artifacts with the matching bridge workflow.
 
 ## Security Updates
 

@@ -45,6 +45,7 @@ def main() -> int:
     cargo = read("Cargo.toml")
     bridge = read(".github/workflows/bridge.yml")
     flutter_build = read(".github/workflows/flutter-build.yml")
+    release_preflight = read(".github/workflows/release-preflight.yml")
     vcpkg = json.loads(read("vcpkg.json"))
 
     checks = [
@@ -133,6 +134,16 @@ def main() -> int:
             versions["vcpkg_baseline"],
         ),
         (
+            "release preflight Rust",
+            yaml_env_value(".github/workflows/release-preflight.yml", "RUST_VERSION"),
+            versions["application_rust"],
+        ),
+        (
+            "release preflight vcpkg baseline",
+            yaml_env_value(".github/workflows/release-preflight.yml", "VCPKG_COMMIT_ID"),
+            versions["vcpkg_baseline"],
+        ),
+        (
             "Docker vcpkg baseline",
             capture(
                 r'git (?:-C \S+ )?checkout ([0-9a-f]{40})',
@@ -152,6 +163,15 @@ def main() -> int:
                 r'cargo install cargo-audit --version ([0-9.]+) --locked',
                 read(".github/workflows/ci.yml"),
                 ".github/workflows/ci.yml:cargo-audit",
+            ),
+            versions["cargo_audit"],
+        ),
+        (
+            "release preflight cargo-audit",
+            capture(
+                r'cargo install cargo-audit --version ([0-9.]+) --locked',
+                release_preflight,
+                ".github/workflows/release-preflight.yml:cargo-audit",
             ),
             versions["cargo_audit"],
         ),

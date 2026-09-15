@@ -45,6 +45,9 @@ Phases 0 through 2 are implemented in the current root history:
 - CI checks RustSec advisories, changed Rust formatting/Clippy findings, and
   Flutter analysis/tests without turning unrelated legacy diagnostics into a
   merge blocker.
+- The manual release preflight validates protected rendezvous inputs, remote
+  submodule reachability, the locked release build, and dependency audit before
+  packaging.
 - `ConnectionDiagnosticsSnapshot` emits lifecycle, security, path, and quality
   information without peer IDs, IP addresses, credentials, or payload content.
 
