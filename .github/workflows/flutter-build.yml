@@ -581,6 +581,8 @@ jobs:
           # Patch sciter x86
           sed -i 's/branch = "dyn"/branch = "dyn_x86"/g' ./Cargo.toml
           cargo -Znext-lockfile-bump update -p sciter-rs --precise 674e07d3066ca9a92ced3816203ab6b652629d1e
+          # The legacy Sciter toolchain cannot parse time-macros' Edition 2024 manifest.
+          cargo -Znext-lockfile-bump update -p time --precise 0.3.40
           cargo -Znext-lockfile-bump build --locked --features inline,vram,hwcodec --release --bins
           mkdir -p ./Release
           mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
