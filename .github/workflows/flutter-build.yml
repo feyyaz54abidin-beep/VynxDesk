@@ -9,6 +9,11 @@ on:
       upload-tag:
         type: string
         default: "nightly"
+    secrets:
+      VYNXDESK_RENDEZVOUS_SERVER:
+        required: false
+      VYNXDESK_RENDEZVOUS_PUB_KEY:
+        required: false
 
 # NOTE: F-Droid builder script 'flutter/build_fdroid.sh' reads environment
 # variables from this workflow!
@@ -52,6 +57,10 @@ env:
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}-2"
+  # Full Flutter CI builds no artifacts. It uses the public debug identity only in
+  # the ephemeral runner; publishing workflows still require protected VynxDesk inputs.
+  VYNXDESK_RENDEZVOUS_SERVER: ${{ inputs.upload-artifact && secrets.VYNXDESK_RENDEZVOUS_SERVER || 'rs-ny.rustdesk.com' }}
+  VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ inputs.upload-artifact && secrets.VYNXDESK_RENDEZVOUS_PUB_KEY || 'OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=' }}
 
 jobs:
   generate-sbom:
@@ -571,8 +580,8 @@ jobs:
           python3 res/inline-sciter.py
           # Patch sciter x86
           sed -i 's/branch = "dyn"/branch = "dyn_x86"/g' ./Cargo.toml
-          cargo update -p sciter-rs --precise 674e07d3066ca9a92ced3816203ab6b652629d1e
-          cargo build --locked --features inline,vram,hwcodec --release --bins
+          cargo -Znext-lockfile-bump update -p sciter-rs --precise 674e07d3066ca9a92ced3816203ab6b652629d1e
+          cargo -Znext-lockfile-bump build --locked --features inline,vram,hwcodec --release --bins
           mkdir -p ./Release
           mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
           curl -LJ -o ./Release/sciter.dll https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x32/sciter.dll
