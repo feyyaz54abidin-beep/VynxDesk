@@ -1671,8 +1671,8 @@ jobs:
           distro: ${{ matrix.job.distro }}
           githubToken: ${{ github.token }}
           env: |
-            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
-            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
+            VYNXDESK_RENDEZVOUS_SERVER: ${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
             ls -l /opt/artifacts/vcpkg/installed
@@ -1995,8 +1995,8 @@ jobs:
           distro: ubuntu18.04
           githubToken: ${{ github.token }}
           env: |
-            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
-            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
+            VYNXDESK_RENDEZVOUS_SERVER: ${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
             ls -l /opt/artifacts/vcpkg/installed
@@ -2234,8 +2234,8 @@ jobs:
           distro: ${{ matrix.job.distro }}
           githubToken: ${{ github.token }}
           env: |
-            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
-            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
+            VYNXDESK_RENDEZVOUS_SERVER: ${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
           dockerRunArgs: |
@@ -2507,8 +2507,8 @@ jobs:
           distro: ${{ matrix.job.distro }}
           githubToken: ${{ github.token }}
           env: |
-            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
-            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
+            VYNXDESK_RENDEZVOUS_SERVER: ${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
           dockerRunArgs: |
