@@ -5,3 +5,4 @@
 [submodule "libs/hwcodec/externals"]
 	path = libs/hwcodec/externals
 	url = https://github.com/rustdesk-org/externals.git
+	ignore = untracked
