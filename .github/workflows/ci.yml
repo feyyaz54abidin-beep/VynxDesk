@@ -277,8 +277,8 @@ jobs:
             CARGO_TEST_OPTIONS="--lib --bin ${PROJECT_NAME}"
             ;;
           *)
-            # These hardware-codec development crates wrap Direct3D and only compile on Windows.
-            CARGO_TEST_OPTIONS="--workspace --exclude capture --exclude render --exclude tool --no-fail-fast -- --skip test_get_cursor_pos --skip test_get_key_state"
+            # Hardware-codec examples require platform-specific GPU features and are covered by the platform build matrix.
+            CARGO_TEST_OPTIONS="--workspace --exclude hwcodec --exclude capture --exclude render --exclude tool --no-fail-fast -- --skip test_get_cursor_pos --skip test_get_key_state"
             ;;
         esac;
 
