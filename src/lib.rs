@@ -59,6 +59,7 @@ mod updater;
 mod ui_cm_interface;
 mod ui_interface;
 mod ui_session_interface;
+pub(crate) mod session_diagnostics;
 
 mod hbbs_http;
 

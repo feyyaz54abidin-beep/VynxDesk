@@ -403,6 +403,8 @@ class FfiModel with ChangeNotifier {
         parent.target?.serverModel.onClientRemove(evt);
       } else if (name == 'update_quality_status') {
         parent.target?.qualityMonitorModel.updateQualityStatus(evt);
+      } else if (name == 'connection_insight') {
+        parent.target?.qualityMonitorModel.updateConnectionInsight(evt);
       } else if (name == 'update_block_input_state') {
         updateBlockInputState(evt, peerId);
       } else if (name == 'update_privacy_mode') {
@@ -3587,15 +3589,78 @@ class QualityMonitorData {
   String? chroma;
 }
 
+class ConnectionInsightData {
+  final String lifecycle;
+  final bool? secure;
+  final bool? direct;
+  final String transport;
+
+  const ConnectionInsightData({
+    required this.lifecycle,
+    required this.secure,
+    required this.direct,
+    required this.transport,
+  });
+
+  factory ConnectionInsightData.fromJson(Map<String, dynamic> json) {
+    bool? parseBool(Object? value) {
+      if (value is bool) return value;
+      if (value is String) {
+        return value == 'true'
+            ? true
+            : value == 'false'
+                ? false
+                : null;
+      }
+      return null;
+    }
+
+    return ConnectionInsightData(
+      lifecycle: json['lifecycle']?.toString() ?? 'idle',
+      secure: parseBool(json['secure']),
+      direct: parseBool(json['direct']),
+      transport: json['transport']?.toString() ?? '',
+    );
+  }
+
+  String get lifecycleLabel {
+    switch (lifecycle) {
+      case 'connecting':
+        return 'Connecting';
+      case 'connected':
+        return 'Connected';
+      case 'disconnected':
+        return 'Disconnected';
+      default:
+        return 'Idle';
+    }
+  }
+
+  String get securityLabel {
+    if (secure == true) return 'Secure';
+    if (secure == false) return 'Unverified';
+    return '-';
+  }
+
+  String get transportLabel {
+    if (transport.isEmpty) return '-';
+    return direct == false && transport != 'Relay'
+        ? '$transport (Relay)'
+        : transport;
+  }
+}
+
 class QualityMonitorModel with ChangeNotifier {
   WeakReference<FFI> parent;
 
   QualityMonitorModel(this.parent);
   var _show = false;
   final _data = QualityMonitorData();
+  ConnectionInsightData? _connectionInsight;
 
   bool get show => _show;
   QualityMonitorData get data => _data;
+  ConnectionInsightData? get connectionInsight => _connectionInsight;
 
   // Only a WebRTC session names its transport here: web has no session tab
   // to show it on, and WebRTC is the one path that can be direct or TURN.
@@ -3605,6 +3670,14 @@ class QualityMonitorModel with ChangeNotifier {
     final streamType = ffiModel.cachedPeerData.streamType;
     if (!streamType.startsWith('WebRTC')) return null;
     return ffiModel.direct == false ? '$streamType (TURN)' : streamType;
+  }
+
+  String? get displayTransport {
+    final insight = _connectionInsight;
+    if (insight != null && insight.transport.isNotEmpty) {
+      return insight.transportLabel;
+    }
+    return webrtcTransport;
   }
 
   checkShowQualityMonitor(SessionID sessionId) async {
@@ -3661,6 +3734,18 @@ class QualityMonitorModel with ChangeNotifier {
     } catch (e) {
       //
     }
+  }
+
+  updateConnectionInsight(Map<String, dynamic> evt) {
+    final rawSnapshot = evt['snapshot'];
+    if (rawSnapshot is! String || rawSnapshot.isEmpty) return;
+    try {
+      final decoded = jsonDecode(rawSnapshot);
+      if (decoded is! Map) return;
+      _connectionInsight =
+          ConnectionInsightData.fromJson(Map<String, dynamic>.from(decoded));
+      notifyListeners();
+    } catch (_) {}
   }
 }
 

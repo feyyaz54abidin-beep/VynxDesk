@@ -594,6 +594,16 @@ class QualityMonitor extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (qualityMonitorModel.connectionInsight != null)
+                        _row(
+                            translate("State"),
+                            translate(qualityMonitorModel
+                                .connectionInsight!.lifecycleLabel)),
+                      if (qualityMonitorModel.connectionInsight != null)
+                        _row(
+                            translate("Security"),
+                            translate(qualityMonitorModel
+                                .connectionInsight!.securityLabel)),
                       _row("Speed", qualityMonitorModel.data.speed ?? '-'),
                       _row("FPS", qualityMonitorModel.data.fps ?? '-'),
                       // let delay be 0 if fps is 0
@@ -606,9 +616,9 @@ class QualityMonitor extends StatelessWidget {
                       _row(
                           "Codec", qualityMonitorModel.data.codecFormat ?? '-'),
                       _row("Chroma", qualityMonitorModel.data.chroma ?? '-'),
-                      if (qualityMonitorModel.webrtcTransport != null)
-                        _row("Transport",
-                            qualityMonitorModel.webrtcTransport!),
+                      if (qualityMonitorModel.displayTransport != null)
+                        _row(
+                            "Transport", qualityMonitorModel.displayTransport!),
                     ],
                   ),
                 )

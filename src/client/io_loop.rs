@@ -195,6 +195,8 @@ impl<T: InvokeUiSession> Remote<T> {
                 };
                 self.handler
                     .set_connection_type(is_secured, direct, stream_type); // flutter -> connection_ready
+                self.handler
+                    .mark_connection_ready(is_secured, direct, stream_type);
                 if !is_secured
                     && !crate::common::is_direct_ip_access(&self.handler.get_id())
                     && !client::confirm_insecure_connection(&self.handler, &mut self.receiver).await
@@ -339,13 +341,15 @@ impl<T: InvokeUiSession> Remote<T> {
                             } else {
                                 Some(self.video_format.clone())
                             };
-                            self.handler.update_quality_status(QualityStatus {
+                            let quality_status = QualityStatus {
                                 speed: Some(speed),
                                 fps,
                                 chroma,
                                 codec_format,
                                 ..Default::default()
-                            });
+                            };
+                            self.handler.record_connection_quality(&quality_status);
+                            self.handler.update_quality_status(quality_status);
                         }
                     }
                 }
@@ -377,6 +381,10 @@ impl<T: InvokeUiSession> Remote<T> {
             .lock()
             .unwrap()
             .set_disconnected(round);
+
+        if _set_disconnected_ok {
+            self.handler.mark_connection_disconnected();
+        }
 
         #[cfg(not(target_os = "ios"))]
         if self.handler.is_default() && _set_disconnected_ok {

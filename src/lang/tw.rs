@@ -775,5 +775,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Always moving forward", ""),
         ("Open your desktop, pick up where you left off.", ""),
         ("My devices", ""),
+        ("State", ""),
+        ("Connecting", ""),
+        ("Idle", ""),
+        ("Secure", ""),
+        ("Unverified", ""),
     ].iter().cloned().collect();
 }

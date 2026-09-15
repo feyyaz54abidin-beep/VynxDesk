@@ -4,6 +4,7 @@ use crate::{
         MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_TYPE_DOWN, MOUSE_TYPE_MASK,
         MOUSE_TYPE_TRACKPAD, MOUSE_TYPE_UP, MOUSE_TYPE_WHEEL,
     },
+    session_diagnostics::{ConnectionDiagnosticsSnapshot, SessionDiagnostics},
     ui_interface::use_texture_render,
 };
 use async_trait::async_trait;
@@ -66,6 +67,7 @@ pub struct Session<T: InvokeUiSession> {
     pub server_clipboard_enabled: Arc<RwLock<bool>>,
     pub last_change_display: Arc<Mutex<ChangeDisplayRecord>>,
     pub connection_round_state: Arc<Mutex<ConnectionRoundState>>,
+    pub(crate) connection_diagnostics: Arc<Mutex<SessionDiagnostics>>,
     pub printer_names: Arc<RwLock<HashMap<i32, String>>>,
     // Indicate whether the session is reconnected.
     // Used to auto start file transfer after reconnection.
@@ -193,6 +195,47 @@ impl SessionPermissionConfig {
 }
 
 impl<T: InvokeUiSession> Session<T> {
+    fn publish_connection_diagnostics(&self) {
+        let snapshot = self
+            .connection_diagnostics
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .snapshot();
+        self.ui_handler.update_connection_diagnostics(&snapshot);
+    }
+
+    pub fn mark_connection_connecting(&self) {
+        self.connection_diagnostics
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .start_connecting();
+        self.publish_connection_diagnostics();
+    }
+
+    pub fn mark_connection_ready(&self, secure: bool, direct: bool, transport: &str) {
+        self.connection_diagnostics
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .mark_connected(secure, direct, transport);
+        self.publish_connection_diagnostics();
+    }
+
+    pub fn record_connection_quality(&self, quality: &QualityStatus) {
+        self.connection_diagnostics
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .record_quality(quality);
+        self.publish_connection_diagnostics();
+    }
+
+    pub fn mark_connection_disconnected(&self) {
+        self.connection_diagnostics
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .mark_disconnected();
+        self.publish_connection_diagnostics();
+    }
+
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub fn get_permission_config(&self) -> SessionPermissionConfig {
         SessionPermissionConfig {
@@ -1289,6 +1332,7 @@ impl<T: InvokeUiSession> Session<T> {
         }
         let round = connection_round_state_lock.new_round();
         drop(connection_round_state_lock);
+        self.mark_connection_connecting();
 
         let cloned = self.clone();
 
@@ -1690,6 +1734,7 @@ pub trait InvokeUiSession: Send + Sync + Clone + 'static + Sized + Default {
     fn set_permission(&self, name: &str, value: bool);
     fn close_success(&self);
     fn update_quality_status(&self, qs: QualityStatus);
+    fn update_connection_diagnostics(&self, _snapshot: &ConnectionDiagnosticsSnapshot) {}
     fn set_connection_type(&self, is_secured: bool, direct: bool, stream_type: &str);
     fn set_fingerprint(&self, fingerprint: String);
     fn job_error(&self, id: i32, err: String, file_num: i32);
@@ -1899,11 +1944,13 @@ impl<T: InvokeUiSession> Interface for Session<T> {
 
     async fn handle_test_delay(&self, t: TestDelay, peer: &mut Stream) {
         if !t.from_client {
-            self.update_quality_status(QualityStatus {
+            let quality_status = QualityStatus {
                 delay: Some(t.last_delay as _),
                 target_bitrate: Some(t.target_bitrate as _),
                 ..Default::default()
-            });
+            };
+            self.record_connection_quality(&quality_status);
+            self.update_quality_status(quality_status);
             handle_test_delay(t, peer).await;
         }
     }

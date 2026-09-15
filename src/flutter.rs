@@ -1,6 +1,7 @@
 use crate::{
     client::*,
     flutter_ffi::{EventToUI, SessionID},
+    session_diagnostics::ConnectionDiagnosticsSnapshot,
     ui_session_interface::{io_loop, InvokeUiSession, Session},
 };
 use flutter_rust_bridge::StreamSink;
@@ -710,6 +711,17 @@ impl InvokeUiSession for FlutterHandler {
         );
     }
 
+    fn update_connection_diagnostics(&self, snapshot: &ConnectionDiagnosticsSnapshot) {
+        let snapshot = match serde_json::to_string(snapshot) {
+            Ok(snapshot) => snapshot,
+            Err(error) => {
+                log::warn!("Failed to serialize connection diagnostics: {error}");
+                return;
+            }
+        };
+        self.push_event("connection_insight", &[("snapshot", &snapshot)], &[]);
+    }
+
     fn set_connection_type(&self, is_secured: bool, direct: bool, stream_type: &str) {
         self.push_event(
             "connection_ready",
@@ -1383,6 +1395,7 @@ pub fn session_start_(
                 id,
                 session.use_texture_render.load(Ordering::Relaxed)
             );
+            session.mark_connection_connecting();
             let session = (*session).clone();
             std::thread::spawn(move || {
                 let round = session.connection_round_state.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).new_round();
