@@ -1670,6 +1670,9 @@ jobs:
           arch: ${{ matrix.job.arch }}
           distro: ${{ matrix.job.distro }}
           githubToken: ${{ github.token }}
+          env: |
+            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
             ls -l /opt/artifacts/vcpkg/installed
@@ -1991,6 +1994,9 @@ jobs:
           arch: x86_64
           distro: ubuntu18.04
           githubToken: ${{ github.token }}
+          env: |
+            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
             ls -l /opt/artifacts/vcpkg/installed
@@ -2227,6 +2233,9 @@ jobs:
           arch: ${{ matrix.job.arch }}
           distro: ${{ matrix.job.distro }}
           githubToken: ${{ github.token }}
+          env: |
+            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
           dockerRunArgs: |
@@ -2497,6 +2506,9 @@ jobs:
           arch: ${{ matrix.job.arch }}
           distro: ${{ matrix.job.distro }}
           githubToken: ${{ github.token }}
+          env: |
+            VYNXDESK_RENDEZVOUS_SERVER=${{ env.VYNXDESK_RENDEZVOUS_SERVER }}
+            VYNXDESK_RENDEZVOUS_PUB_KEY=${{ env.VYNXDESK_RENDEZVOUS_PUB_KEY }}
           setup: |
             ls -l "${PWD}"
           dockerRunArgs: |
