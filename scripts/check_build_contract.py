@@ -15,6 +15,7 @@ REQUIRED_DESKTOP_ASSETS = (
     "res/32x32.png",
     "res/128x128.png",
     "res/128x128@2x.png",
+    "res/scalable.svg",
     "res/icon.png",
     "res/mac-icon.png",
     "res/mac-tray-dark-x2.png",
