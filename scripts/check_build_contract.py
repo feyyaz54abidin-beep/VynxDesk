@@ -11,6 +11,15 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_DESKTOP_ASSETS = (
+    "res/32x32.png",
+    "res/128x128.png",
+    "res/128x128@2x.png",
+    "res/icon.png",
+    "res/mac-icon.png",
+    "res/mac-tray-dark-x2.png",
+    "res/vynx-app.svg",
+)
 
 
 def read(path: str) -> str:
@@ -41,6 +50,14 @@ def bridge_flutter_version(bridge: str, artifact_name: str) -> str:
 
 
 def main() -> int:
+    missing_assets = [
+        path for path in REQUIRED_DESKTOP_ASSETS if not (ROOT / path).is_file()
+    ]
+    if missing_assets:
+        raise ValueError(
+            "required desktop assets are missing: " + ", ".join(missing_assets)
+        )
+
     versions = tomllib.loads(read("toolchain-versions.toml"))["build"]
     cargo = read("Cargo.toml")
     bridge = read(".github/workflows/bridge.yml")
