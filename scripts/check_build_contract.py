@@ -22,6 +22,12 @@ REQUIRED_DESKTOP_ASSETS = (
     "res/mac-tray-dark-x2.png",
     "res/vynx-app.svg",
 )
+REQUIRED_EXECUTABLE_DEBIAN_SCRIPTS = (
+    "res/DEBIAN/preinst",
+    "res/DEBIAN/postinst",
+    "res/DEBIAN/prerm",
+    "res/DEBIAN/postrm",
+)
 
 
 def read(path: str) -> str:
@@ -35,6 +41,17 @@ def is_tracked(path: str) -> bool:
         capture_output=True,
         check=False,
     ).returncode == 0
+
+
+def git_mode(path: str) -> str:
+    result = subprocess.run(
+        ["git", "ls-files", "--stage", "--", path],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.split(maxsplit=1)[0]
 
 
 def capture(pattern: str, content: str, label: str) -> str:
@@ -74,6 +91,16 @@ def main() -> int:
     if untracked_assets:
         raise ValueError(
             "required desktop assets are not tracked: " + ", ".join(untracked_assets)
+        )
+    non_executable_debian_scripts = [
+        path
+        for path in REQUIRED_EXECUTABLE_DEBIAN_SCRIPTS
+        if git_mode(path) != "100755"
+    ]
+    if non_executable_debian_scripts:
+        raise ValueError(
+            "Debian maintainer scripts must be executable: "
+            + ", ".join(non_executable_debian_scripts)
         )
 
     versions = tomllib.loads(read("toolchain-versions.toml"))["build"]
