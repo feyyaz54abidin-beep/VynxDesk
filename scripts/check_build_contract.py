@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -25,6 +26,15 @@ REQUIRED_DESKTOP_ASSETS = (
 
 def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
+
+
+def is_tracked(path: str) -> bool:
+    return subprocess.run(
+        ["git", "ls-files", "--error-unmatch", "--", path],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    ).returncode == 0
 
 
 def capture(pattern: str, content: str, label: str) -> str:
@@ -57,6 +67,13 @@ def main() -> int:
     if missing_assets:
         raise ValueError(
             "required desktop assets are missing: " + ", ".join(missing_assets)
+        )
+    untracked_assets = [
+        path for path in REQUIRED_DESKTOP_ASSETS if not is_tracked(path)
+    ]
+    if untracked_assets:
+        raise ValueError(
+            "required desktop assets are not tracked: " + ", ".join(untracked_assets)
         )
 
     versions = tomllib.loads(read("toolchain-versions.toml"))["build"]
