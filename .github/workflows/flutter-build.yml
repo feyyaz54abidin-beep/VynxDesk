@@ -607,6 +607,8 @@ jobs:
           # Patch sciter x86
           sed -i 's/branch = "dyn"/branch = "dyn_x86"/g' ./Cargo.toml
           sed -i 's/keepawake = "0.6.1"/keepawake = "0.5.1"/g' ./Cargo.toml
+          # Rust 1.75 cannot build windows 0.62; keep the legacy Sciter resolver on the compatible notification API.
+          sed -i 's/tauri-winrt-notification = "0.8.1"/tauri-winrt-notification = "=0.7.3"/g' ./Cargo.toml
           cargo -Znext-lockfile-bump update -p keepawake --precise 0.5.1
           cargo -Znext-lockfile-bump update -p sciter-rs --precise 674e07d3066ca9a92ced3816203ab6b652629d1e
           # The legacy Sciter toolchain cannot parse time-macros' Edition 2024 manifest.
@@ -618,6 +620,7 @@ jobs:
           cargo -Znext-lockfile-bump update -p time --precise 0.3.40
           # url 2.5.8 resolves ICU 2.x manifests that require Cargo's Edition 2024 support.
           cargo -Znext-lockfile-bump update -p url --precise 2.5.0
+          cargo -Znext-lockfile-bump update -p tauri-winrt-notification --precise 0.7.3
           cargo -Znext-lockfile-bump build --locked --features inline,vram,hwcodec --release --bins
           mkdir -p ./Release
           mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
