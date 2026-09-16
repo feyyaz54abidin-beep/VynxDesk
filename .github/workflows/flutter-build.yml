@@ -58,12 +58,35 @@ env:
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}-2"
   # Full Flutter CI builds no artifacts. It uses the public debug identity only in
-  # the ephemeral runner; publishing workflows still require protected VynxDesk inputs.
+  # the ephemeral runner; validate-release-identity blocks publishing workflows
+  # before any build or release action can consume that fallback.
   VYNXDESK_RENDEZVOUS_SERVER: ${{ inputs.upload-artifact && secrets.VYNXDESK_RENDEZVOUS_SERVER || 'rs-ny.rustdesk.com' }}
   VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ inputs.upload-artifact && secrets.VYNXDESK_RENDEZVOUS_PUB_KEY || 'OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=' }}
 
 jobs:
+  validate-release-identity:
+    name: Validate artifact release identity
+    runs-on: ubuntu-24.04
+    env:
+      VYNXDESK_RENDEZVOUS_SERVER: ${{ secrets.VYNXDESK_RENDEZVOUS_SERVER }}
+      VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ secrets.VYNXDESK_RENDEZVOUS_PUB_KEY }}
+    steps:
+      - name: Require protected production identity for artifacts
+        shell: bash
+        run: |
+          if [[ "${{ inputs.upload-artifact }}" != "true" ]]; then
+            exit 0
+          fi
+          missing=()
+          [[ -n "$VYNXDESK_RENDEZVOUS_SERVER" ]] || missing+=(VYNXDESK_RENDEZVOUS_SERVER)
+          [[ -n "$VYNXDESK_RENDEZVOUS_PUB_KEY" ]] || missing+=(VYNXDESK_RENDEZVOUS_PUB_KEY)
+          if ((${#missing[@]})); then
+            echo "::error::Missing required protected release input(s): ${missing[*]}"
+            exit 1
+          fi
+
   generate-sbom:
+    needs: [validate-release-identity]
     runs-on: ubuntu-latest
 
     permissions:
@@ -92,6 +115,7 @@ jobs:
             rustdesk.sbom.json
 
   generate-bridge:
+    needs: [validate-release-identity]
     uses: ./.github/workflows/bridge.yml
 
   flutter-quality:
@@ -130,6 +154,7 @@ jobs:
           popd
 
   build-RustDeskTempTopMostWindow:
+    needs: [validate-release-identity]
     uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
     strategy:
       fail-fast: false
@@ -501,6 +526,7 @@ jobs:
   # The fallback for the flutter version, we use Sciter for 32bit Windows.
   build-for-windows-sciter:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
+    needs: [validate-release-identity]
     runs-on: ${{ matrix.job.os }}
     # Temporarily disable this action due to additional test is needed.
     # if: false
@@ -2158,6 +2184,7 @@ jobs:
 
   build-rustdesk-linux-sciter:
     if: ${{ inputs.upload-artifact }}
+    needs: [validate-release-identity]
     runs-on: ${{ matrix.job.on }}
     name: build-rustdesk-linux-sciter ${{ matrix.job.target }}
     strategy:
