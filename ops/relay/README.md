@@ -5,12 +5,12 @@ This stack provides the production rendezvous service (`hbbs`) and relay service
 
 ## Before deployment
 
-1. Create the DNS record `relay.vynx.com.tr` for the VPS public IP, or replace
-   `VYNX_RELAY_HOST` with the final hostname.
+1. Choose a public DNS hostname for the VPS and create its record before
+   setting `VYNX_RELAY_HOST`.
 2. Allow TCP ports 21115 through 21119 and UDP port 21116 through the VPS and
    cloud firewalls.
-3. Copy `.env.example` to `.env`, choose a tested container image, and replace
-   the image tag with an immutable digest before customer rollout.
+3. Copy `.env.example` to `.env`, set the final public hostname, and choose a
+   tested container image pinned to an immutable digest before customer rollout.
 4. Restrict access to the `data` directory. It contains `id_ed25519`, the private
    rendezvous identity key. Do not put that file in a client package or source archive.
 
@@ -26,7 +26,7 @@ The final command prints the public key that belongs in the desktop build. Build
 the client only after both values below are final:
 
 ```powershell
-$env:VYNXDESK_RENDEZVOUS_SERVER = 'relay.vynx.com.tr'
+$env:VYNXDESK_RENDEZVOUS_SERVER = '<production relay hostname>'
 $env:VYNXDESK_RENDEZVOUS_PUB_KEY = '<public key printed by hbbs>'
 ```
 
