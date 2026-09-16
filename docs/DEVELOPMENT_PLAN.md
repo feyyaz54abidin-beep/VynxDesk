@@ -35,7 +35,9 @@ evidence.
 
 ## Current Baseline
 
-Phases 0 through 2 are implemented in the current root history:
+Phases 0 through 3 have implementation evidence in the current root history.
+Phase 6 has its preflight contract and supply-chain checks in place, but its
+external production inputs are intentionally still outstanding:
 
 - `vynxdesk-baseline-2026-09-15` identifies the imported VynxDesk source
   baseline.
@@ -48,26 +50,27 @@ Phases 0 through 2 are implemented in the current root history:
 - The manual release preflight validates protected rendezvous inputs, remote
   submodule reachability, the locked release build, and dependency audit before
   packaging.
+- `.gitmodules` points `libs/hbb_common` at the VynxDesk-controlled fork and
+  the root gitlink is remotely fetchable by the release contract check.
 - `ConnectionDiagnosticsSnapshot` emits lifecycle, security, path, and quality
   information without peer IDs, IP addresses, credentials, or payload content.
+- Reconnect-round tests prove that an old disconnect cannot transition a newer
+  connection round, including after the counter wraps.
 
 ## Immediate Next Work
 
-1. Create a VynxDesk-controlled fork of `hbb_common`, push the local
-   `47d560448682a9772b36f9003d8db9537a987a86` commit, and change the root
-   `.gitmodules` URL before using remote CI or publishing a source archive.
-2. Run the Phase 3 fixture suite before changing rendezvous, punch, relay,
+1. Extend the Phase 3 fixture suite before changing rendezvous, punch, relay,
    WebRTC, or reconnect selection. Each fixture must assert the selected path
    and resulting lifecycle rather than infer success from logging.
-3. Add a small session-test harness for stale-round disconnects, repeated
-   reconnects, and partial quality updates. Keep it local to the session layer;
-   it must not change the wire protocol.
-4. Add VM-backed Windows acceptance jobs only after their artifacts and device
+2. Add VM-backed Windows acceptance jobs only after their artifacts and device
    setup are reproducible. A local desktop run is not evidence for service,
    virtual-display, RDP, or protected-input behavior.
-5. Set the production rendezvous host and public key as protected release
+3. Set the production rendezvous host and public key as protected release
    inputs, then perform the Phase 6 release build. Never commit either value as
    a fallback; the private rendezvous key must never enter this repository.
+4. Provision the Windows, Apple, and Android signing identities, then verify
+   package signatures and clean-machine installation against the signed release
+   artifacts.
 
 ## Acceptance Matrix
 

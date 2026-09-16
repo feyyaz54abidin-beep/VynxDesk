@@ -31,15 +31,15 @@ unreviewed upstream range into the product branch.
 
 ## Custom hbb_common State
 
-The current `libs/hbb_common` worktree includes VynxDesk-specific changes and
-is at local commit `47d560448682a9772b36f9003d8db9537a987a86`. Its public
-upstream parent is `3d6fb2c397f2a9a717440f7e29afed5ab5f5dc03`.
+The root `libs/hbb_common` gitlink is
+`47d560448682a9772b36f9003d8db9537a987a86` and `.gitmodules` points it at the
+VynxDesk-controlled `https://github.com/feyyaz54abidin-beep/hbb_common` fork.
+`python scripts/check_release_contract.py --verify-hbb-remote` proves that the
+exact gitlink is fetchable by a clean remote checkout.
 
-Before this root repository is pushed to a remote CI service, push that custom
-commit to a VynxDesk-controlled `hbb_common` fork and update the submodule URL
-in `.gitmodules` to that fork. A root gitlink pointing at a local-only submodule
-commit cannot be cloned by a remote runner. This is a release infrastructure
-prerequisite, not a source-code workaround.
+For a future VynxDesk-specific `hbb_common` change, push the submodule commit to
+that controlled fork before updating the root gitlink. A root gitlink pointing
+at a local-only submodule commit cannot be cloned by a remote runner.
 
 The nested `libs/hwcodec/externals` dependency is explicitly registered as a
 submodule and ignores only untracked build markers. Tracked changes inside that
