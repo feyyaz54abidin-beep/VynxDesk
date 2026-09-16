@@ -616,6 +616,8 @@ jobs:
           cargo -Znext-lockfile-bump update -p num_enum@0.7.2 --precise 0.7.0
           cargo -Znext-lockfile-bump update -p indexmap@2.14.2 --precise 2.1.0
           cargo -Znext-lockfile-bump update -p time --precise 0.3.40
+          # url 2.5.8 resolves ICU 2.x manifests that require Cargo's Edition 2024 support.
+          cargo -Znext-lockfile-bump update -p url --precise 2.5.0
           cargo -Znext-lockfile-bump build --locked --features inline,vram,hwcodec --release --bins
           mkdir -p ./Release
           mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
