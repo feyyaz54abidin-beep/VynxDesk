@@ -13,9 +13,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HBB_SUBMODULE = "libs/hbb_common"
+RELAY_TEMPLATE = "ops/relay/.env.example"
+RELAY_COMPOSE = "ops/relay/compose.yml"
 RELEASE_ENV = (
     "VYNXDESK_RENDEZVOUS_SERVER",
     "VYNXDESK_RENDEZVOUS_PUB_KEY",
+)
+RELAY_ENV = (
+    "VYNX_RELAY_IMAGE",
+    "VYNX_RELAY_HOST",
 )
 
 
@@ -61,6 +67,37 @@ def read_submodule_url() -> str:
     if not url:
         raise ContractError("libs/hbb_common URL is empty")
     return url
+
+
+def require_unconfigured_relay_template() -> None:
+    template = ROOT / RELAY_TEMPLATE
+    compose = ROOT / RELAY_COMPOSE
+    if not template.is_file() or not compose.is_file():
+        raise ContractError("the relay deployment template is incomplete")
+
+    values = {}
+    for line in template.read_text(encoding="utf-8").splitlines():
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key] = value
+
+    configured = [name for name in RELAY_ENV if values.get(name, "")]
+    missing = [name for name in RELAY_ENV if name not in values]
+    if missing or configured:
+        details = []
+        if missing:
+            details.append("missing " + ", ".join(missing))
+        if configured:
+            details.append("configured " + ", ".join(configured))
+        raise ContractError("relay template must require deployment values: " + "; ".join(details))
+
+    compose_text = compose.read_text(encoding="utf-8")
+    unguarded = [name for name in RELAY_ENV if f"${{{name}:?" not in compose_text]
+    if unguarded:
+        raise ContractError(
+            "relay compose must reject missing deployment values: " + ", ".join(unguarded)
+        )
 
 
 def require_release_environment() -> None:
@@ -144,6 +181,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    require_unconfigured_relay_template()
     commit = read_gitlink()
     url = read_submodule_url()
     if not args.allow_dirty:
