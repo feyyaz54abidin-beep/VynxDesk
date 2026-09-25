@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
-      - name: Verify exact patch and prepare baseline regressions
+      - name: Verify exact patches and prepare baseline regressions
         shell: python {0}
         run: |
           import base64, hashlib, lzma, os, subprocess
@@ -31,8 +31,13 @@ jobs:
           assert hashlib.sha256(patch).hexdigest() == 'bd771eb9227599ae7955a71542a66094bf866de82bc7e1d769382e6569c1f332'
           output = Path(os.environ['RUNNER_TEMP']) / 'vynxdesk-hardening.patch'
           output.write_bytes(patch)
+          followup = subprocess.check_output(['git', 'show', 'HEAD:.github/maintenance/hardening.followup.patch'])
+          assert hashlib.sha256(followup).hexdigest() == 'd8f5123ba0ad4a9306287d5a569de34225ec4f2d7d331194f765b86bbc44c2cc'
+          followup_path = Path(os.environ['RUNNER_TEMP']) / 'vynxdesk-followup.patch'
+          followup_path.write_bytes(followup)
           subprocess.run(['git', 'apply', '--unidiff-zero', '--check', str(output)], check=True)
           subprocess.run(['git', 'apply', '--unidiff-zero', '--include=scripts/tests/windows/distribution.ps1', '--include=scripts/tests/windows/input_probe.py', str(output)], check=True)
+          subprocess.run(['git', 'apply', '--include=scripts/tests/windows/distribution.ps1', str(followup_path)], check=True)
       - name: Prove native regressions fail before fixes
         shell: pwsh
         run: |
@@ -57,7 +62,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git apply --unidiff-zero "$env:RUNNER_TEMP/vynxdesk-hardening.patch"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          git rm .github/maintenance/hardening.0 .github/maintenance/hardening.1 .github/maintenance/hardening.2 .github/maintenance/hardening.3 .github/workflows/vynxdesk-apply-hardening.yml
+          git apply --check "$env:RUNNER_TEMP/vynxdesk-followup.patch"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git apply "$env:RUNNER_TEMP/vynxdesk-followup.patch"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rm .github/maintenance/hardening.0 .github/maintenance/hardening.1 .github/maintenance/hardening.2 .github/maintenance/hardening.3 .github/maintenance/hardening.followup.patch .github/workflows/vynxdesk-apply-hardening.yml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git add -A
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix: harden Windows input, source export and release packaging'

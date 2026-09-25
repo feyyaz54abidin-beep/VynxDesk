@@ -1,0 +1,75 @@
+diff --git a/build.py b/build.py
+index d16c43c..5b320a5 100755
+--- a/build.py
++++ b/build.py
+@@ -982,12 +982,12 @@ def main():
+         print(feats)
+         return
+ 
++    features = ','.join(get_features(args))
+     if os.path.exists(exe_path):
+         os.unlink(exe_path)
+     if os.path.isfile('/usr/bin/pacman'):
+         system2('git checkout src/ui/common.tis')
+     version = get_version()
+-    features = ','.join(get_features(args))
+     flutter = args.flutter
+     if not flutter:
+         system2('python3 res/inline-sciter.py')
+diff --git a/scripts/tests/test_windows_build_profile.py b/scripts/tests/test_windows_build_profile.py
+index 7f72341..5fd7b3b 100644
+--- a/scripts/tests/test_windows_build_profile.py
++++ b/scripts/tests/test_windows_build_profile.py
+@@ -21,6 +21,18 @@ class WindowsBuildProfileTests(unittest.TestCase):
+                     self.fail(f"Build argument is not supported: {arguments}: {error}")
+                 return build.get_features(args)
+ 
++    def test_invalid_platform_never_deletes_existing_binary(self):
++        import tempfile
++        with tempfile.TemporaryDirectory() as directory:
++            existing = Path(directory) / "customer-build.exe"
++            existing.write_bytes(b"keep existing build")
++            with patch.object(build, "windows", False), patch.object(build, "osx", False), \
++                 patch.object(build, "exe_path", str(existing)), \
++                 patch.object(sys, "argv", ["build.py", "--flutter", "--windows-input-plus"]):
++                with self.assertRaises(ValueError):
++                    build.main()
++            self.assertEqual(existing.read_bytes(), b"keep existing build")
++
+     def test_standard_flutter_is_unchanged(self):
+         self.assertEqual(self.features(["--flutter"]), ["flutter"])
+ 
+diff --git a/scripts/tests/windows/distribution.ps1 b/scripts/tests/windows/distribution.ps1
+index 4409721..b1d23fb 100644
+--- a/scripts/tests/windows/distribution.ps1
++++ b/scripts/tests/windows/distribution.ps1
+@@ -6,11 +6,10 @@ $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
+ $temp = Join-Path ([IO.Path]::GetTempPath()) ('vynxdesk-test-' + [guid]::NewGuid())
+ $failed = 0
+ $passed = 0
+-$script:SignatureStatus = [System.Management.Automation.SignatureStatus]::NotSigned
+ # Signature policy is isolated here; this test never modifies a certificate store.
+ function Get-AuthenticodeSignature {
+     param([string]$LiteralPath)
+-    [pscustomobject]@{Status=$script:SignatureStatus}
++    [pscustomobject]@{Status=[System.Management.Automation.SignatureStatus]::NotSigned}
+ }
+ function Assert-True($Condition, [string]$Message) {
+     if (-not $Condition) { throw $Message }
+@@ -65,11 +64,13 @@ try {
+     }
+     Run-Test 'Unsigned mode never permits a damaged signature' {
+         $root = Fixture
+-        $script:SignatureStatus = [System.Management.Automation.SignatureStatus]::HashMismatch
++        function Get-AuthenticodeSignature {
++            param([string]$LiteralPath)
++            [pscustomobject]@{Status=[System.Management.Automation.SignatureStatus]::HashMismatch}
++        }
+         $rejected = $false
+         try { & (Join-Path $root 'res\package-windows-desktop.ps1') -BuildDirectory (Join-Path $root 'build') -OutputDirectory (Join-Path $root 'dist\bad') -AllowUnsigned -SkipArchive }
+-        catch { $rejected = $true }
+-        finally { $script:SignatureStatus = [System.Management.Automation.SignatureStatus]::NotSigned }
++        catch { $rejected = $_.Exception.Message -match 'Invalid binary signature:.*HashMismatch' }
+         Assert-True $rejected 'Tampered signatures were allowed'
+     }
+     Run-Test 'Read-only diagnostics never claim game acceptance' {
