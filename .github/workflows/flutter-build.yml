@@ -9,6 +9,10 @@ on:
       upload-tag:
         type: string
         default: "nightly"
+      build-legacy-windows-sciter:
+        description: "Unsupported Windows 32-bit Sciter compatibility investigation (not the VynxDesk product)"
+        type: boolean
+        default: false
     secrets:
       VYNXDESK_RENDEZVOUS_SERVER:
         required: false
@@ -71,19 +75,15 @@ jobs:
       VYNXDESK_RENDEZVOUS_SERVER: ${{ secrets.VYNXDESK_RENDEZVOUS_SERVER }}
       VYNXDESK_RENDEZVOUS_PUB_KEY: ${{ secrets.VYNXDESK_RENDEZVOUS_PUB_KEY }}
     steps:
+      - name: Checkout release validator
+        if: ${{ inputs.upload-artifact }}
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Require protected production identity for artifacts
+        if: ${{ inputs.upload-artifact }}
         shell: bash
-        run: |
-          if [[ "${{ inputs.upload-artifact }}" != "true" ]]; then
-            exit 0
-          fi
-          missing=()
-          [[ -n "$VYNXDESK_RENDEZVOUS_SERVER" ]] || missing+=(VYNXDESK_RENDEZVOUS_SERVER)
-          [[ -n "$VYNXDESK_RENDEZVOUS_PUB_KEY" ]] || missing+=(VYNXDESK_RENDEZVOUS_PUB_KEY)
-          if ((${#missing[@]})); then
-            echo "::error::Missing required protected release input(s): ${missing[*]}"
-            exit 1
-          fi
+        run: python -c "import sys; sys.path.insert(0, 'scripts'); from check_release_contract import require_release_environment; require_release_environment()"
 
   generate-sbom:
     needs: [validate-release-identity]
@@ -191,7 +191,7 @@ jobs:
               arch: x86_64,
               flutter-arch: x64,
               vcpkg-triplet: x64-windows-static,
-              build-args: "--vram",
+              build-args: "--vram --windows-input-plus",
             }
           - {
               target: aarch64-pc-windows-msvc,
@@ -201,7 +201,7 @@ jobs:
               vcpkg-triplet: arm64-windows-static,
               # vram is x86/x64-only (NVENC needs CUDA, Intel MediaSDK needs __rdtsc);
               # no NV/Intel/AMD hardware exists on Windows-on-ARM, so vram stays disabled here.
-              build-args: "",
+              build-args: "--windows-input-plus",
             }
     steps:
       - name: Export GitHub Actions cache environment variables
@@ -528,8 +528,8 @@ jobs:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
     needs: [validate-release-identity]
     runs-on: ${{ matrix.job.os }}
-    # Temporarily disable this action due to additional test is needed.
-    # if: false
+    # Sciter requires an older ABI than the supported application MSRV.
+    if: ${{ inputs.build-legacy-windows-sciter }}
     strategy:
       fail-fast: false
       matrix:
@@ -1038,7 +1038,7 @@ jobs:
       - build-for-windows-flutter
       - build-for-windows-sciter
     runs-on: ubuntu-latest
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ !cancelled() && inputs.upload-artifact && needs.build-for-macOS.result == 'success' && needs.build-for-windows-flutter.result == 'success' && (!inputs.build-legacy-windows-sciter || needs.build-for-windows-sciter.result == 'success') }}
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -1064,7 +1064,8 @@ jobs:
           name: rustdesk-unsigned-windows-aarch64
           path: ./windows-aarch64/
 
-      - name: Download Artifacts
+      - name: Download legacy Windows artifacts
+        if: ${{ inputs.build-legacy-windows-sciter }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: rustdesk-unsigned-windows-x86
@@ -1084,7 +1085,9 @@ jobs:
 
       - name: Combine unsigned app
         run: |
-          tar czf rustdesk-${{ env.VERSION }}-unsigned.tar.gz *.dmg windows-x86_64 windows-aarch64 windows-x86 msi-template
+          paths=(windows-x86_64 windows-aarch64 msi-template)
+          if [[ -d windows-x86 ]]; then paths+=(windows-x86); fi
+          tar czf rustdesk-${{ env.VERSION }}-unsigned.tar.gz *.dmg "${paths[@]}"
 
       - name: Publish unsigned app
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
