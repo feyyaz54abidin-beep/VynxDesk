@@ -1,0 +1,44 @@
+name: VynxDesk verification
+
+on:
+  push:
+    branches: [codex/vynxdesk-hardening-20260926]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vynxdesk-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact source and submodules
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Capture source-only Git bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SNAPSHOT_DIR="$RUNNER_TEMP/vynxdesk-source"
+          mkdir -p "$SNAPSHOT_DIR"
+          git bundle create "$SNAPSHOT_DIR/root.bundle" HEAD
+          git submodule foreach --recursive 'git bundle create "$SNAPSHOT_DIR/$(printf "%s" "$displaypath" | tr / _).bundle" HEAD'
+          git rev-parse HEAD > "$SNAPSHOT_DIR/COMMIT.txt"
+          git submodule status --recursive > "$SNAPSHOT_DIR/SUBMODULES.txt"
+          cd "$SNAPSHOT_DIR"
+          sha256sum *.bundle > SHA256SUMS
+      - name: Upload verification source (not a customer release)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-verification-source
+          path: ${{ runner.temp }}/vynxdesk-source
+          if-no-files-found: error
+          retention-days: 7
