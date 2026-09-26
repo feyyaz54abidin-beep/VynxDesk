@@ -1,0 +1,124 @@
+name: Verify VYNX integration candidate
+
+on:
+  push:
+    branches: [codex/vynxdesk-vynx-integration-20260926]
+    paths:
+      - '.github/maintenance/vynx-integration.*'
+      - '.github/workflows/vynxdesk-integrate-once.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: vynx-integration-candidate
+  cancel-in-progress: false
+
+jobs:
+  verify-candidate:
+    if: github.repository == 'feyyaz54abidin-beep/VynxDesk' && github.event.head_commit.message == 'ci: validate VYNX integration candidate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Validate exact candidate and stage only reviewed source
+        shell: python {0}
+        run: |
+          import base64, hashlib, lzma, os, subprocess
+          from pathlib import Path
+          subprocess.run(['git','merge-base','--is-ancestor','c0574bc05d49d74a862fd951d7badacb0738664c','HEAD'],check=True)
+          parts = [Path(f'.github/maintenance/vynx-integration.{i}') for i in range(4)]
+          patch = lzma.decompress(base64.b64decode(''.join(p.read_text() for p in parts),validate=True))
+          assert hashlib.sha256(patch).hexdigest() == 'e8083bf940fb6c1ea99d911d5532ff5fa3eacd89be3c2cb3a6276d1894f65f6e'
+          path = Path(os.environ['RUNNER_TEMP']) / 'vynx-integration.patch'
+          path.write_bytes(patch)
+          subprocess.run(['git','apply','--unidiff-zero','--check',str(path)],check=True)
+          subprocess.run(['git','apply','--unidiff-zero',str(path)],check=True)
+          for part in parts: part.unlink()
+          subprocess.run(['git','add','-A'],check=True)
+          subprocess.run(['git','diff','--cached','--check'],check=True)
+      - name: Install declared service test dependencies
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vynx-venv"
+          echo "$RUNNER_TEMP/vynx-venv/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/vynx-venv/bin/pip" install -r services/licensing/requirements-test.txt PyYAML==6.0.2 pip-audit==2.10.1
+      - name: Service and source regressions
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s services/licensing/tests -v 2>&1 | tee "$RUNNER_TEMP/service-tests.log"
+          python -m unittest discover -s scripts/tests -v 2>&1 | tee "$RUNNER_TEMP/source-tests.log"
+          python scripts/vynx_brand.py --check
+          python scripts/check_build_contract.py
+      - name: Audit declared production service dependencies
+        run: pip-audit -r services/licensing/requirements.txt --format json --output "$RUNNER_TEMP/service-audit.json"
+      - name: Restore bridge for unchanged Rust FFI
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: bridge-artifact
+          run-id: 36201561934
+          github-token: ${{ github.token }}
+          path: .
+      - name: Install project Flutter version
+        uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225
+        with:
+          channel: stable
+          flutter-version: '3.24.5'
+          cache: true
+      - name: Flutter analysis and full test suite
+        working-directory: flutter
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/flutter-analysis.log"
+          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/flutter-tests.log"
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        with:
+          toolchain: '1.88'
+      - name: Actual-source audio and domain Rust probes
+        run: |
+          set -euo pipefail
+          python scripts/ringbuf_audio_probe.py 2>&1 | tee "$RUNNER_TEMP/audio-tests.log"
+          python scripts/vynx_domain_probe.py 2>&1 | tee "$RUNNER_TEMP/domain-tests.log"
+      - name: Audit root lockfile without advisory ignores
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --json > "$RUNNER_TEMP/rust-audit.json"
+      - name: Commit only the verified staged source
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          git diff --cached --check
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'feat: integrate VYNX domains and audited license operations'
+          python scripts/check_release_contract.py
+          git rev-parse HEAD > "$RUNNER_TEMP/COMMIT.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/TREE.txt"
+      - name: Push only the verified isolated feature branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/codex/vynxdesk-vynx-integration-20260926
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-integration-evidence
+          path: |
+            ${{ runner.temp }}/service-tests.log
+            ${{ runner.temp }}/source-tests.log
+            ${{ runner.temp }}/service-audit.json
+            ${{ runner.temp }}/flutter-analysis.log
+            ${{ runner.temp }}/flutter-tests.log
+            ${{ runner.temp }}/audio-tests.log
+            ${{ runner.temp }}/domain-tests.log
+            ${{ runner.temp }}/rust-audit.json
+            ${{ runner.temp }}/COMMIT.txt
+            ${{ runner.temp }}/TREE.txt
+          retention-days: 14
+          if-no-files-found: error
