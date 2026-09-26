@@ -37,6 +37,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:vector_math/vector_math.dart' show Vector2;
 
+import '../features/connection_doctor/doctor.dart';
 import '../common.dart';
 import '../utils/image.dart' as img;
 import '../common/widgets/dialog.dart';
@@ -3657,6 +3658,7 @@ class QualityMonitorModel with ChangeNotifier {
   var _show = false;
   final _data = QualityMonitorData();
   ConnectionInsightData? _connectionInsight;
+  final connectionDoctor = ConnectionDoctor();
 
   bool get show => _show;
   QualityMonitorData get data => _data;
@@ -3737,11 +3739,13 @@ class QualityMonitorModel with ChangeNotifier {
   }
 
   updateConnectionInsight(Map<String, dynamic> evt) {
+    connectionDoctor.reset();
     final rawSnapshot = evt['snapshot'];
     if (rawSnapshot is! String || rawSnapshot.isEmpty) return;
     try {
       final decoded = jsonDecode(rawSnapshot);
       if (decoded is! Map) return;
+      connectionDoctor.ingest(Map<String, dynamic>.from(decoded));
       _connectionInsight =
           ConnectionInsightData.fromJson(Map<String, dynamic>.from(decoded));
       notifyListeners();
@@ -3895,6 +3899,7 @@ class FFI {
     List<int>? displays,
   }) {
     closed = false;
+    qualityMonitorModel.connectionDoctor.reset();
     if (isMobile) mobileReset();
     assert(
         (!(isPortForward && isViewCamera)) &&
