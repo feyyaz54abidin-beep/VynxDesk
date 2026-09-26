@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ANDROID = '{http://schemas.android.com/apk/res/android}'
+ABIS = {'armeabi-v7a': (1, 40), 'arm64-v8a': (2, 183), 'x86': (1, 3), 'x86_64': (2, 62)}
 
 
 def validate_manifest(text):
@@ -26,6 +27,13 @@ def validate_manifest(text):
     for key in ('debuggable', 'testOnly'):
         if app.get(ANDROID + key, 'false').lower() != 'false':
             raise ValueError(f'Customer APK is {key}')
+    private = {'MainService', 'FloatingWindowService', 'PermissionRequestTransparentActivity'}
+    for component in app:
+        name = component.get(ANDROID + 'name', '').rsplit('.', 1)[-1]
+        if name in private and component.get(ANDROID + 'exported') != 'false':
+            raise ValueError(f'Internal component must explicitly disable exported: {name}')
+        if name == 'InputService' and component.get(ANDROID + 'permission') != 'android.permission.BIND_ACCESSIBILITY_SERVICE':
+            raise ValueError('Accessibility service lacks its system binding permission')
     if any('DEBUG_BOOT' in action.get(ANDROID + 'name', '') for action in root.iter('action')):
         raise ValueError('Debug boot action leaked into customer APK')
 
@@ -43,10 +51,18 @@ def validate_signer(report, expected):
         raise ValueError('APK requires a verified v2 or newer signature')
 
 
-def elf_load_alignments(data):
+def elf_load_alignments(data, expected_abi=None):
     if len(data) < 64 or data[:4] != b'\x7fELF' or data[5] not in (1, 2):
         raise ValueError('Malformed native ELF library')
     endian = '<' if data[5] == 1 else '>'
+    kind, machine, version = struct.unpack_from(endian + 'HHI', data, 16)
+    if data[6] != 1 or version != 1:
+        raise ValueError('Unknown ELF version')
+    if kind != 3:
+        raise ValueError('Native runtime must be a shared ELF object')
+    if expected_abi is not None and (expected_abi not in ABIS or
+            ABIS[expected_abi] != (data[4], machine) or data[5] != 1):
+        raise ValueError('Native ELF ABI differs from its APK directory')
     if data[4] == 2:
         phoff = struct.unpack_from(endian + 'Q', data, 32)[0]
         entsize, count = struct.unpack_from(endian + 'HH', data, 54)
@@ -63,7 +79,14 @@ def elf_load_alignments(data):
     for index in range(count):
         offset = phoff + index * entsize
         if struct.unpack_from(endian + 'I', data, offset)[0] == 1:
-            values.append(struct.unpack_from(endian + fmt, data, offset + alignment_offset)[0])
+            alignment = struct.unpack_from(endian + fmt, data, offset + alignment_offset)[0]
+            file_offset, address = struct.unpack_from(endian + fmt * 2, data, offset + (8 if data[4] == 2 else 4))
+            file_size, memory_size = struct.unpack_from(endian + fmt * 2, data, offset + (32 if data[4] == 2 else 16))
+            if file_size > memory_size or file_offset + file_size > len(data):
+                raise ValueError('ELF load segment exceeds its file or memory bounds')
+            if alignment > 1 and (alignment & (alignment - 1) or file_offset % alignment != address % alignment):
+                raise ValueError('Invalid ELF load segment alignment')
+            values.append(alignment)
     if not values:
         raise ValueError('ELF has no loadable segments')
     return values
@@ -83,7 +106,10 @@ def inspect_native(apk, require_16kb=False):
             if info.filename.startswith('lib/') and info.filename.endswith('.so'):
                 if info.file_size > 256 * 1024 * 1024:
                     raise ValueError('Native library exceeds inspection limit')
-                alignments = elf_load_alignments(archive.read(info))
+                parts = info.filename.split('/')
+                if len(parts) != 3 or parts[1] not in ABIS:
+                    raise ValueError('Invalid native APK ABI path')
+                alignments = elf_load_alignments(archive.read(info), parts[1])
                 result[info.filename] = min(alignments)
                 if require_16kb and any(f'/{abi}/' in info.filename for abi in ('arm64-v8a', 'x86_64')):
                     if any(a < 16384 or a % 16384 for a in alignments):

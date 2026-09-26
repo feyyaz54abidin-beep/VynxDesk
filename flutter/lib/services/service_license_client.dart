@@ -56,7 +56,7 @@ class ServiceLicenseClient {
       final response = await client.send(request).timeout(const Duration(seconds: 15));
       final bytes = <int>[];
       await response.stream.forEach((chunk) {
-        if (bytes.length + chunk.length > 65536) {
+        if (bytes.length + chunk.length > 128 * 1024) {
           throw const ServiceLicenseException('invalid_response');
         }
         bytes.addAll(chunk);
@@ -71,6 +71,8 @@ class ServiceLicenseClient {
         throw const ServiceLicenseException('invalid_response');
       }
       return decoded;
+    } on http.ClientException {
+      throw const ServiceLicenseException('network_unavailable');
     } on TimeoutException {
       throw const ServiceLicenseException('network_timeout');
     } on FormatException {
@@ -94,33 +96,71 @@ class ServiceLicenseClient {
     return {'challenge': nonce, 'signature': await device.sign(payload)};
   }
 
+  static bool _activationId(dynamic value) => value is String &&
+      value.length == 36 &&
+      RegExp(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$').hasMatch(value);
+
+  static bool _lease(Map<String, dynamic> value, {String? activationId}) {
+    final token = value['token'];
+    final ttl = value['expires_in'];
+    return _activationId(value['activation_id']) &&
+        (activationId == null || value['activation_id'] == activationId) &&
+        value['service'] == 'vynxdesk-managed-devices' &&
+        token is String && token.isNotEmpty && token.length <= 4096 &&
+        ttl is int && ttl >= 1 && ttl <= 300;
+  }
+
+  static bool _inventory(Map<String, dynamic> value) {
+    final devices = value['devices'];
+    final quota = value['max_devices'];
+    final expiry = value['expires_at'];
+    if (value['service'] != 'vynxdesk-managed-devices' ||
+        devices is! List || quota is! int || quota < 1 || quota > 1000 ||
+        devices.length > quota || expiry is! int || expiry < 1 ||
+        expiry > 253402300799) {
+      return false;
+    }
+    final identifiers = <String>{};
+    for (final entry in devices) {
+      if (entry is! Map<String, dynamic> || !_activationId(entry['id'])) {
+        return false;
+      }
+      final activatedAt = entry['activated_at'];
+      if (!identifiers.add(entry['id'] as String) || activatedAt is! int ||
+          activatedAt < 1 || activatedAt > expiry) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Future<void> activate(String code) async {
     if (!RegExp(r'^vxd_[A-Za-z0-9_-]{43}$').hasMatch(code)) {
       throw const ServiceLicenseException('invalid_activation_code');
     }
     final response = await _post('/v1/activate', {'code': code, ...await _proof('activate', code)});
     final id = response['activation_id'];
-    if (id is! String || !RegExp(r'^[a-f0-9-]{36}$').hasMatch(id)) {
+    if (!_lease(response)) {
       throw const ServiceLicenseException('invalid_response');
     }
-    await device.remember(id);
+    await device.remember(id as String);
   }
 
   Future<Map<String, dynamic>> devices() async {
     final identity = await device.identity();
     final id = identity['activation_id'];
-    if (id is! String || !RegExp(r'^[a-f0-9-]{36}$').hasMatch(id)) {
+    if (!_activationId(id)) {
       throw const ServiceLicenseException('activation_required');
     }
     final refreshed = await _post('/v1/refresh', {
-      'activation_id': id, ...await _proof('refresh', id),
+      'activation_id': id, ...await _proof('refresh', id as String),
     });
-    final token = refreshed['token'];
-    if (token is! String || token.isEmpty || token.length > 4096) {
+    if (!_lease(refreshed, activationId: id as String)) {
       throw const ServiceLicenseException('invalid_response');
     }
+    final token = refreshed['token'] as String;
     final response = await _post('/v1/managed/devices', {'token': token, ...await _proof('devices', token)});
-    if (response['devices'] is! List || response['max_devices'] is! int || response['expires_at'] is! int) {
+    if (!_inventory(response)) {
       throw const ServiceLicenseException('invalid_response');
     }
     return response;

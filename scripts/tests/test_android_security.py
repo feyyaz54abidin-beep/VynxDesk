@@ -86,7 +86,8 @@ class ApkGateTests(unittest.TestCase):
     def elf(self, alignment=16384):
         import struct
         data = bytearray(120)
-        data[:6] = b'\x7fELF\x02\x01'
+        data[:7] = b'\x7fELF\x02\x01\x01'
+        struct.pack_into('<HHI', data, 16, 3, 183, 1)
         struct.pack_into('<Q', data, 32, 64)
         struct.pack_into('<HH', data, 54, 56, 1)
         struct.pack_into('<I', data, 64, 1)
@@ -123,6 +124,71 @@ class ApkGateTests(unittest.TestCase):
                     archive.writestr('lib/arm64-v8a/' + name, self.elf(4096))
             with self.assertRaisesRegex(ValueError, '16 KB'):
                 self.gate.inspect_native(apk, True)
+
+    def native_apk(self, data, abi='arm64-v8a'):
+        import tempfile, zipfile
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        apk = Path(temp.name) / 'candidate.apk'
+        with zipfile.ZipFile(apk, 'w') as archive:
+            for name in ['librustdesk.so', 'libflutter.so', 'libapp.so']:
+                archive.writestr(f'lib/{abi}/{name}', data)
+        return apk
+
+    def test_wrong_machine_cannot_pass_as_arm64(self):
+        import struct
+        data = bytearray(self.elf())
+        struct.pack_into('<H', data, 18, 62)  # Real x86-64 header, mislabeled ARM64 path.
+        with self.assertRaisesRegex(ValueError, 'ABI'):
+            self.gate.inspect_native(self.native_apk(data), True)
+        self.assertEqual(len(self.gate.inspect_native(self.native_apk(data, 'x86_64'), True)), 3)
+
+    def test_unknown_abi_directory_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'ABI'):
+            self.gate.inspect_native(self.native_apk(self.elf(), 'imaginary-cpu'), True)
+
+    def test_segment_alignment_is_a_power_of_two_even_without_16kb_gate(self):
+        with self.assertRaisesRegex(ValueError, 'alignment'):
+            self.gate.inspect_native(self.native_apk(self.elf(12345)))
+
+    def test_nonshared_elf_is_rejected(self):
+        import struct
+        data = bytearray(self.elf())
+        struct.pack_into('<H', data, 16, 2)
+        with self.assertRaisesRegex(ValueError, 'shared'):
+            self.gate.inspect_native(self.native_apk(data))
+
+    def test_load_segment_offset_and_address_must_be_congruent(self):
+        import struct
+        data = bytearray(self.elf())
+        struct.pack_into('<Q', data, 80, 1)  # p_vaddr != p_offset mod p_align
+        with self.assertRaisesRegex(ValueError, 'alignment'):
+            self.gate.inspect_native(self.native_apk(data), True)
+
+    def test_load_segment_cannot_read_past_file(self):
+        import struct
+        data = bytearray(self.elf())
+        struct.pack_into('<QQ', data, 96, len(data) + 1, len(data) + 1)
+        with self.assertRaisesRegex(ValueError, 'segment'):
+            self.gate.inspect_native(self.native_apk(data))
+
+    def test_internal_android_components_cannot_be_exported(self):
+        for tag, name in [('service', 'MainService'), ('service', 'FloatingWindowService'),
+                          ('activity', 'PermissionRequestTransparentActivity')]:
+            for prefix in ('.', 'com.carriez.flutter_hbb.'):
+                xml = self.xml().replace('/></manifest>',
+                    f'><{tag} android:name="{prefix}{name}" android:exported="true"/></application></manifest>')
+                with self.subTest(name=name, prefix=prefix), self.assertRaisesRegex(ValueError, 'exported'):
+                    self.gate.validate_manifest(xml)
+                self.gate.validate_manifest(xml.replace('exported="true"', 'exported="false"'))
+
+    def test_accessibility_service_requires_its_system_permission(self):
+        xml = self.xml().replace('/></manifest>',
+            '><service android:name=".InputService" android:exported="false"/></application></manifest>')
+        with self.assertRaisesRegex(ValueError, 'permission'):
+            self.gate.validate_manifest(xml)
+        self.gate.validate_manifest(xml.replace('android:exported="false"',
+            'android:exported="false" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"'))
 
 
 if __name__ == '__main__':
