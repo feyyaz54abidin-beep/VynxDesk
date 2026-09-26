@@ -1,11 +1,9 @@
-name: Verify reviewed Connection Doctor candidate
+name: Verify Connection Doctor final style correction
 
 on:
   push:
     branches: [codex/vynxdesk-connection-doctor-20260926]
-    paths:
-      - '.github/maintenance/connection-doctor.*'
-      - '.github/workflows/vynxdesk-doctor-verify.yml'
+    paths: ['.github/workflows/vynxdesk-doctor-verify.yml']
 
 permissions:
   contents: write
@@ -13,53 +11,55 @@ permissions:
 
 jobs:
   verify-candidate:
+    if: >-
+      github.repository == 'feyyaz54abidin-beep/VynxDesk' && github.event.head_commit.message == 'ci: verify final Connection Doctor source'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
-      - name: Apply only the reviewed feature and test correction
+      - name: Apply two exact brace corrections to tested code
         shell: python {0}
         run: |
-          import base64, hashlib, lzma, os, subprocess
           from pathlib import Path
-          subprocess.run(['git','merge-base','--is-ancestor','9264034ef407a8ac0cebb2262ad12dd66d2a4d76','HEAD'],check=True)
-          subprocess.run(['git','diff','--exit-code','769a005d7ec80da3c75572f95a5e52e7e388a88d','HEAD','--','src','libs','Cargo.toml','Cargo.lock','.github/workflows/bridge.yml','flutter/pubspec.yaml'],check=True)
-          parts=[Path(f'.github/maintenance/connection-doctor.{i}') for i in range(3)]
-          patch=lzma.decompress(base64.b64decode(''.join(p.read_text() for p in parts),validate=True))
-          assert hashlib.sha256(patch).hexdigest()=='6ef4dda4a9e92abc7ad6cf3f0e583f2d6f3ecb97028eaa296747bc4dedf3b0c1'
-          out=Path(os.environ['RUNNER_TEMP'])/'doctor.patch'
-          out.write_bytes(patch)
-          subprocess.run(['git','apply','--check',str(out)],check=True)
-          subprocess.run(['git','apply',str(out)],check=True)
-          correction=Path('.github/maintenance/connection-doctor.correction')
-          assert hashlib.sha256(correction.read_bytes()).hexdigest()=='fca56a3338a8b1de2273f82dc9823861a245d1a99a4d7a2a590f62a96a3070e2'
-          subprocess.run(['git','apply','--check',str(correction)],check=True)
-          subprocess.run(['git','apply',str(correction)],check=True)
-          for p in parts+[correction]: p.unlink()
+          import subprocess
+          subprocess.run(['git','diff','--exit-code','14becc2e526afc2bcf9c907cd965768f0cfd2e0f','HEAD','--','flutter','src','libs','Cargo.toml','Cargo.lock'],check=True)
+          p=Path('flutter/lib/features/connection_doctor/panel.dart')
+          old="      if (mounted)\n        setState(() =>\n            _copyStatus = 'Copy failed. Select the report text or try again.');"
+          new="      if (mounted) {\n        setState(() =>\n            _copyStatus = 'Copy failed. Select the report text or try again.');\n      }"
+          text=p.read_text(); assert text.count(old)==1; p.write_text(text.replace(old,new))
+          p=Path('flutter/test/connection_doctor_panel_test.dart')
+          old="      if (call.method == 'Clipboard.setData')\n        writes.add(call.arguments['text'] as String);"
+          new="      if (call.method == 'Clipboard.setData') {\n        writes.add(call.arguments['text'] as String);\n      }"
+          text=p.read_text(); assert text.count(old)==1; p.write_text(text.replace(old,new))
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: '3.24.5'
           channel: stable
           cache: true
-      - name: Format only the new feature and tests
-        run: dart format flutter/lib/features/connection_doctor flutter/test/connection_doctor_test.dart flutter/test/connection_doctor_panel_test.dart
-      - name: Test the exact feature in isolation
-        shell: bash
+      - name: Check exact feature formatting
+        run: dart format --output=none --set-exit-if-changed flutter/lib/features/connection_doctor flutter/test/connection_doctor_test.dart flutter/test/connection_doctor_panel_test.dart
+      - name: Restore previously generated unchanged native API bridge
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: bridge-artifact
+          run-id: 36223925498
+          github-token: ${{ github.token }}
+          path: .
+      - name: Analyze and test the complete Flutter application
+        working-directory: flutter
         run: |
           set -euo pipefail
-          probe="$RUNNER_TEMP/doctor-probe"
-          mkdir -p "$probe/lib/features" "$probe/test"
-          cp -r flutter/lib/features/connection_doctor "$probe/lib/features/"
-          cp flutter/test/connection_doctor*test.dart "$probe/test/"
-          printf 'name: flutter_hbb\nenvironment:\n  sdk: ">=3.1.0 <4.0.0"\ndependencies:\n  flutter:\n    sdk: flutter\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n' > "$probe/pubspec.yaml"
-          cd "$probe"
           flutter pub get
-          flutter analyze --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/doctor-analysis.log"
-          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/doctor-tests.log"
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/flutter-analysis.log"
+          if grep -E '(info|warning|error) .*(lib/features/connection_doctor/|test/connection_doctor)' "$RUNNER_TEMP/flutter-analysis.log"; then
+            echo 'New Connection Doctor diagnostics must be resolved.'
+            exit 1
+          fi
+          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/flutter-tests.log"
       - name: Source and localization regressions
         run: |
           set -euo pipefail
@@ -68,49 +68,32 @@ jobs:
           "$RUNNER_TEMP/source-venv/bin/python" -m unittest discover -s scripts/tests -v 2>&1 | tee "$RUNNER_TEMP/source-tests.log"
           "$RUNNER_TEMP/source-venv/bin/python" scripts/check_build_contract.py
           python3 scripts/vynx_brand.py --check
-      - name: Restore verified unchanged native API bridge
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: bridge-artifact
-          run-id: 36223925498
-          github-token: ${{ github.token }}
-          path: .
-      - name: Analyze and test the complete current Flutter application
-        working-directory: flutter
-        run: |
-          set -euo pipefail
-          flutter pub get
-          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/flutter-analysis.log"
-          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/flutter-tests.log"
-      - name: Commit verified source only
-        shell: bash
+      - name: Commit only the tested brace corrections
         run: |
           set -euo pipefail
           git diff --check
-          git add docs/CONNECTION_DOCTOR.md docs/CONNECTION_DOCTOR_KEYS.txt flutter/lib/features/connection_doctor flutter/test/connection_doctor_test.dart flutter/test/connection_doctor_panel_test.dart flutter/lib/models/model.dart flutter/lib/common/widgets/overlay.dart scripts/tests/test_connection_doctor_contract.py src/lang .github/maintenance/connection-doctor.*
-          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'feat: add local VYNX Connection Doctor with explicit report preview'
+          git add flutter/lib/features/connection_doctor/panel.dart flutter/test/connection_doctor_panel_test.dart
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'style: resolve new Connection Doctor analyzer diagnostics'
+          "$RUNNER_TEMP/source-venv/bin/python" scripts/check_release_contract.py
           git rev-parse HEAD > "$RUNNER_TEMP/COMMIT.txt"
           git rev-parse HEAD^{tree} > "$RUNNER_TEMP/TREE.txt"
           git diff d277974ba04dd3547a28e7d3243eaf89593e23ca HEAD -- docs flutter scripts/tests src/lang > "$RUNNER_TEMP/verified-feature.patch"
-          "$RUNNER_TEMP/source-venv/bin/python" scripts/check_release_contract.py
-      - name: Push only the isolated development branch
+      - name: Push only the isolated feature branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/codex/vynxdesk-connection-doctor-20260926
-      - name: Preserve actual verification results
+      - name: Preserve exact results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: vynxdesk-doctor-candidate-evidence
+          name: vynxdesk-doctor-final-evidence
           path: |
-            ${{ runner.temp }}/doctor-analysis.log
-            ${{ runner.temp }}/doctor-tests.log
-            ${{ runner.temp }}/source-tests.log
             ${{ runner.temp }}/flutter-analysis.log
             ${{ runner.temp }}/flutter-tests.log
+            ${{ runner.temp }}/source-tests.log
             ${{ runner.temp }}/COMMIT.txt
             ${{ runner.temp }}/TREE.txt
             ${{ runner.temp }}/verified-feature.patch
