@@ -1,0 +1,46 @@
+name: VynxDesk publisher identity regressions
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/vynxdesk-audit-fixes-20260926]
+  pull_request:
+    paths:
+      - 'res/commercial-release.ps1'
+      - 'scripts/tests/windows/publisher.ps1'
+      - '.github/workflows/vynxdesk-publisher-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vynx-publisher-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publisher-policy:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Test release publisher policy with controlled signature fixtures
+        shell: ${{ matrix.shell }}
+        run: |
+          & ./scripts/tests/windows/publisher.ps1 *> "$env:RUNNER_TEMP/publisher-tests.log"
+          $result = $LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/publisher-tests.log"
+          exit $result
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-publisher-${{ matrix.shell }}
+          path: ${{ runner.temp }}/publisher-tests.log
+          retention-days: 14
+          if-no-files-found: error
