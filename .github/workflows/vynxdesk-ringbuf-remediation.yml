@@ -1,0 +1,79 @@
+name: Verify ringbuf security remediation
+
+on:
+  push:
+    branches: [codex/vynxdesk-ringbuf-security-20260926]
+    paths:
+      - 'scripts/ringbuf_audio_probe.py'
+      - '.github/workflows/vynxdesk-ringbuf-remediation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-upgrade:
+    if: github.repository == 'feyyaz54abidin-beep/VynxDesk' && github.ref == 'refs/heads/codex/vynxdesk-ringbuf-security-20260926'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        with:
+          toolchain: '1.88'
+      - name: Prove the dependency regression before changes
+        run: |
+          set +e
+          python3 scripts/ringbuf_audio_probe.py > "$RUNNER_TEMP/audio-red.log" 2>&1
+          result=$?
+          set -e
+          cat "$RUNNER_TEMP/audio-red.log"
+          test "$result" -ne 0
+          grep -F 'a dropped element must not remain readable' "$RUNNER_TEMP/audio-red.log"
+          grep -F '4 passed; 1 failed' "$RUNNER_TEMP/audio-red.log"
+      - name: Upgrade only the vulnerable dependency and its API adaptations
+        shell: python {0}
+        run: |
+          from pathlib import Path
+          p=Path('Cargo.toml'); s=p.read_text(); assert s.count('ringbuf = "0.3"')==1
+          p.write_text(s.replace('ringbuf = "0.3"','ringbuf = "=0.5.2"'))
+          p=Path('src/client.rs'); s=p.read_text()
+          old='use ringbuf::{ring_buffer::RbBase, Rb};'
+          assert s.count(old)==1
+          s=s.replace(old, 'use ringbuf::traits::{Consumer, Observer, RingBuffer};')
+          start=s.index('struct AudioBuffer('); end=s.index('\nimpl AudioHandler {',start)
+          a=s[start:end]; assert a.count('.capacity()')==3
+          s=s[:start]+a.replace('.capacity()', '.capacity().get()')+s[end:]
+          p.write_text(s)
+      - name: Resolve exact root lockfile
+        run: cargo update -p ringbuf --precise 0.5.2
+      - name: Prove panic safety and preserved audio buffer behavior
+        run: |
+          set -euo pipefail
+          python3 scripts/ringbuf_audio_probe.py 2>&1 | tee "$RUNNER_TEMP/audio-green.log"
+      - name: Audit the complete root lockfile without ignores
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --json > "$RUNNER_TEMP/rust-audit.json"
+      - name: Commit only the verified non-workflow changes
+        run: |
+          set -euo pipefail
+          git diff --check
+          git add Cargo.toml Cargo.lock src/client.rs
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'security: upgrade ringbuf to 0.5.2 and preserve audio buffer semantics'
+          git push origin HEAD:refs/heads/codex/vynxdesk-ringbuf-security-20260926
+          git rev-parse HEAD > "$RUNNER_TEMP/COMMIT.txt"
+          git rev-parse 'HEAD^{tree}' > "$RUNNER_TEMP/TREE.txt"
+      - name: Preserve actual regression and audit evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-ringbuf-evidence
+          path: |
+            ${{ runner.temp }}/audio-red.log
+            ${{ runner.temp }}/audio-green.log
+            ${{ runner.temp }}/rust-audit.json
+            ${{ runner.temp }}/COMMIT.txt
+            ${{ runner.temp }}/TREE.txt
+          retention-days: 14
