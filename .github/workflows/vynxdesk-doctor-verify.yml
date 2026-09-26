@@ -1,0 +1,117 @@
+name: Verify reviewed Connection Doctor candidate
+
+on:
+  push:
+    branches: [codex/vynxdesk-connection-doctor-20260926]
+    paths:
+      - '.github/maintenance/connection-doctor.*'
+      - '.github/workflows/vynxdesk-doctor-verify.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  generate-bridge:
+    uses: ./.github/workflows/bridge.yml
+  verify-candidate:
+    needs: generate-bridge
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Apply only the reviewed feature patch
+        shell: python {0}
+        run: |
+          import base64, hashlib, lzma, os, subprocess
+          from pathlib import Path
+          subprocess.run(['git','merge-base','--is-ancestor','9264034ef407a8ac0cebb2262ad12dd66d2a4d76','HEAD'],check=True)
+          parts=[Path(f'.github/maintenance/connection-doctor.{i}') for i in range(3)]
+          patch=lzma.decompress(base64.b64decode(''.join(p.read_text() for p in parts),validate=True))
+          assert hashlib.sha256(patch).hexdigest()=='6ef4dda4a9e92abc7ad6cf3f0e583f2d6f3ecb97028eaa296747bc4dedf3b0c1'
+          out=Path(os.environ['RUNNER_TEMP'])/'doctor.patch'
+          out.write_bytes(patch)
+          subprocess.run(['git','apply','--check',str(out)],check=True)
+          subprocess.run(['git','apply',str(out)],check=True)
+          for p in parts: p.unlink()
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+      - name: Format only the new feature and tests
+        run: dart format flutter/lib/features/connection_doctor flutter/test/connection_doctor_test.dart flutter/test/connection_doctor_panel_test.dart
+      - name: Test the exact feature in isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe="$RUNNER_TEMP/doctor-probe"
+          mkdir -p "$probe/lib/features" "$probe/test"
+          cp -r flutter/lib/features/connection_doctor "$probe/lib/features/"
+          cp flutter/test/connection_doctor*test.dart "$probe/test/"
+          printf 'name: flutter_hbb\nenvironment:\n  sdk: ">=3.1.0 <4.0.0"\ndependencies:\n  flutter:\n    sdk: flutter\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n' > "$probe/pubspec.yaml"
+          cd "$probe"
+          flutter pub get
+          flutter analyze --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/doctor-analysis.log"
+          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/doctor-tests.log"
+      - name: Source and localization regressions
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/source-venv"
+          "$RUNNER_TEMP/source-venv/bin/pip" install PyYAML==6.0.2
+          "$RUNNER_TEMP/source-venv/bin/python" -m unittest discover -s scripts/tests -v 2>&1 | tee "$RUNNER_TEMP/source-tests.log"
+          "$RUNNER_TEMP/source-venv/bin/python" scripts/check_build_contract.py
+          python3 scripts/vynx_brand.py --check
+      - name: Restore current run bridge for unchanged native API
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: bridge-artifact
+          path: .
+      - name: Analyze and test the complete current Flutter application
+        working-directory: flutter
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/flutter-analysis.log"
+          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/flutter-tests.log"
+      - name: Commit verified source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git add docs/CONNECTION_DOCTOR.md docs/CONNECTION_DOCTOR_KEYS.txt flutter/lib/features/connection_doctor flutter/test/connection_doctor_test.dart flutter/test/connection_doctor_panel_test.dart flutter/lib/models/model.dart flutter/lib/common/widgets/overlay.dart scripts/tests/test_connection_doctor_contract.py src/lang .github/maintenance/connection-doctor.*
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'feat: add local VYNX Connection Doctor with explicit report preview'
+          git rev-parse HEAD > "$RUNNER_TEMP/COMMIT.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/TREE.txt"
+          git diff d277974ba04dd3547a28e7d3243eaf89593e23ca HEAD -- docs flutter scripts/tests src/lang > "$RUNNER_TEMP/verified-feature.patch"
+          "$RUNNER_TEMP/source-venv/bin/python" scripts/check_release_contract.py
+      - name: Push only the isolated development branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/codex/vynxdesk-connection-doctor-20260926
+      - name: Preserve actual verification results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-doctor-candidate-evidence
+          path: |
+            ${{ runner.temp }}/doctor-analysis.log
+            ${{ runner.temp }}/doctor-tests.log
+            ${{ runner.temp }}/source-tests.log
+            ${{ runner.temp }}/flutter-analysis.log
+            ${{ runner.temp }}/flutter-tests.log
+            ${{ runner.temp }}/COMMIT.txt
+            ${{ runner.temp }}/TREE.txt
+            ${{ runner.temp }}/verified-feature.patch
+          retention-days: 14
+          if-no-files-found: warn
