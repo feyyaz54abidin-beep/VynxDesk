@@ -996,7 +996,7 @@ pub fn is_modifier(evt: &KeyEvent) -> bool {
 }
 
 pub fn check_software_update() {
-    if is_custom_client() {
+    if is_custom_client() || !is_rustdesk() {
         return;
     }
     let opt = LocalConfig::get_option(keys::OPTION_ENABLE_CHECK_UPDATE);
@@ -1009,6 +1009,11 @@ pub fn check_software_update() {
 // Because the url is always `https://api.rustdesk.com/version/latest`.
 #[tokio::main(flavor = "current_thread")]
 pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
+    // The upstream request includes a device fingerprint. Forks must use their
+    // own signed release channel rather than disclose it or install another product.
+    if !is_rustdesk() {
+        return Ok(());
+    }
     let (request, url) =
         hbb_common::version_check_request(hbb_common::VER_TYPE_RUSTDESK_CLIENT.to_string());
     let proxy_conf = Config::get_socks();
@@ -1137,7 +1142,9 @@ fn get_api_server_(api: String, custom: String) -> String {
             return format!("http://{}", s);
         }
     }
-    "https://admin.vynxdesk.com".to_owned()
+    // No compatible account API is provisioned by default. The managed inventory
+    // service is a different protocol and must never receive account credentials.
+    String::new()
 }
 
 #[inline]
@@ -1150,7 +1157,7 @@ pub fn is_public(url: &str) -> bool {
         return false;
     };
     let host = host.strip_suffix('.').unwrap_or(host);
-    host == "vynxdesk.com" || host.ends_with(".vynxdesk.com") || host == "rustdesk.com" || host.ends_with(".rustdesk.com")
+    host == "vynx.com.tr" || host.ends_with(".vynx.com.tr") || host == "rustdesk.com" || host.ends_with(".rustdesk.com")
 }
 
 pub fn get_tcp_punch_enabled() -> bool {
@@ -3030,6 +3037,17 @@ mod tests {
         assert!(!is_public("localhost"));
         assert!(!is_public("https://rustdesk.computer.com"));
         assert!(!is_public("rustdesk.comhello.com"));
+    }
+
+    #[test]
+    fn test_is_public_matches_vynx_domain_boundaries() {
+        assert!(is_public("https://vynx.com.tr/"));
+        assert!(is_public("https://DESK-API.VYNX.COM.TR/v1"));
+        assert!(is_public("desk-relay.vynx.com.tr:21117"));
+        assert!(!is_public("https://vynx.com.tr.evil.test/"));
+        assert!(!is_public("https://vynx.com.tr@evil.test/"));
+        assert!(!is_public("https://not-vynx.com.tr/"));
+        assert!(!is_public("https://vynxdesk.com/"));
     }
 
     #[test]

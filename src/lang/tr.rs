@@ -781,5 +781,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Idle", "Boşta"),
         ("Secure", "Güvenli"),
         ("Unverified", "Doğrulanmadı"),
+        ("Service subscription", "Hizmet aboneliği"),
+        ("Activation code", "Etkinleştirme kodu"),
+        ("Activate subscription", "Aboneliği etkinleştir"),
+        ("Subscription expires", "Abonelik bitişi"),
+        ("Managed service licensing does not restrict standard remote desktop.", "Yönetilen hizmet lisansı standart uzak masaüstü kullanımını kısıtlamaz."),
     ].iter().cloned().collect();
 }

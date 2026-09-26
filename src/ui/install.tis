@@ -50,7 +50,7 @@ class Install: Reactor.Component {
     }
 
     event click $(#agreement) {
-        view.open_url("https://vynxdesk.com/privacy");
+        view.open_url("https://vynx.com.tr/vynxdesk/privacy.html");
     }
 
     event click $(#submit) {

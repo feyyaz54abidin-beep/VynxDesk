@@ -8,7 +8,7 @@ Raw Input events.
 Build the paid/custom-client binary with:
 
 ```powershell
-cargo build --release --features windows-user-input-plus
+python build.py --flutter --hwcodec --windows-input-plus
 ```
 
 Set `windows-input-compatibility-profile` in the signed custom-client advanced
@@ -39,3 +39,35 @@ Absolute and relative pointer movement retain the existing system-wide path.
 The legacy profile maintains button state across down/up messages and emits
 client coordinates for buttons and screen coordinates for wheel messages, as
 required by Win32.
+
+## What this does not establish
+
+A successful `SendInput` call only establishes insertion into the Windows input
+stream. It does not prove that an application consumed it. UIPI can block input
+across integrity levels without a useful last-error value. Window messages are
+not equivalent to Raw Input; a protected application may deliberately reject
+synthetic input. Do not remove OS or game protections to claim compatibility.
+
+The `standard` profile remains the default. `scan-code` is not a new bypass; it
+uses the existing scan-code-first path. Use `virtual-key` only for applications
+that expect virtual keys. Use `legacy-window` only for compatible Win32 message
+consumers. Keyboard mode and the input backend are distinct: test the actual
+Translate/Map/Legacy mode used by the session, since not every route uses Enigo.
+The build flag does not enable the USB bridge or install a driver.
+
+## Support procedure
+
+Run `powershell -NoProfile -File .\diagnose-input.ps1` on the host. This is a
+read-only local report; it does not press keys or send telemetry. Optional
+`-OutputPath .\input-report.json` creates a new report without overwriting one.
+It does not measure a game's integrity level or test game acceptance.
+
+For each reported issue, reproduce first in a plain desktop editor and then the
+affected application's focused, windowed session. Check host installation mode,
+UAC/integrity context, selected keyboard mode and signed input profile. Test left
+and right modifiers, extended keys, press/release pairs, mouse buttons/wheel,
+relative motion and reconnect/focus loss. Record the exact client build, host OS,
+application version, input mode, transport and result. Do not advertise a title
+as supported until that title has passed on a clean machine.
+
+Reference contracts: Microsoft Learn `SendInput`, `KEYBDINPUT`, `WM_KEYUP`.

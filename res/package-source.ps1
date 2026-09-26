@@ -24,34 +24,11 @@ if ((Test-Path -LiteralPath $outputFullPath) -and -not $Force) {
 $outputDirectory = Split-Path -Parent $outputFullPath
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
-$tarArguments = @(
-    '-a',
-    '-cf',
-    $outputFullPath,
-    '--exclude=./.git',
-    '--exclude=./target',
-    '--exclude=./dist',
-    '--exclude=./flutter/build',
-    '--exclude=./flutter/.dart_tool',
-    '--exclude=./flutter/android/.gradle',
-    '--exclude=./flutter/android/app/src/main/jniLibs',
-    '--exclude=./flutter/android/key.properties',
-    '--exclude=./flutter/split-debug-info',
-    '--exclude=*.jks',
-    '--exclude=*.keystore',
-    '--exclude=./vynxdesk.exe',
-    '--exclude=./sciter.dll',
-    '.'
-)
-
-Push-Location $repoRoot
-try {
-    & tar.exe @tarArguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Source archive creation failed with exit code $LASTEXITCODE."
-    }
-} finally {
-    Pop-Location
+$pythonArguments = @((Join-Path $repoRoot 'scripts/package_source.py'), '--output', $outputFullPath)
+if ($Force) { $pythonArguments += '--force' }
+& python @pythonArguments
+if ($LASTEXITCODE -ne 0) {
+    throw "Exact source archive creation failed with exit code $LASTEXITCODE."
 }
 
 $archive = Get-Item -LiteralPath $outputFullPath

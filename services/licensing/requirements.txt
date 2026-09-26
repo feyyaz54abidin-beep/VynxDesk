@@ -1,0 +1,6 @@
+# Revalidate with pip-audit and the test suite before changing these pins.
+cryptography==50.0.1
+fastapi==0.141.1
+starlette==1.7.0
+pydantic==2.13.4
+uvicorn==0.48.0

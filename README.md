@@ -29,6 +29,23 @@ The upstream project is available at [rustdesk/rustdesk](https://github.com/rust
 
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for contribution guidance inherited from the upstream project.
 
+## VynxDesk Windows product build
+
+The supported Windows product uses **Flutter on x64**, not the legacy Sciter
+32-bit client. See [Windows desktop release](docs/WINDOWS_DESKTOP_RELEASE.md),
+[input compatibility](docs/WINDOWS_USER_INPUT_PLUS.md) and
+[release readiness](docs/HARDENING_RELEASE_READINESS.md).
+
+With the pinned toolchain and native dependencies prepared:
+
+```powershell
+python build.py --flutter --hwcodec --windows-input-plus
+```
+
+Production relay identity and trusted signing are release inputs, not development
+fallbacks. The historical Sciter instructions below are retained for upstream
+context; they are not the supported VynxDesk customer distribution procedure.
+
 ## Dependencies
 
 Desktop versions use Flutter or Sciter (deprecated) for GUI. This tutorial is for Sciter only, since it is easier and more friendly to start. Check out our [CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml) for building the Flutter version.

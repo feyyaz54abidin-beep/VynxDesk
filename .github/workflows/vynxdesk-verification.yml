@@ -1,0 +1,51 @@
+name: VynxDesk verification
+
+on:
+  pull_request:
+  push:
+    branches: [master, codex/vynxdesk-hardening-20260926]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vynxdesk-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Install workflow parser
+        run: python -m pip install PyYAML==6.0.2
+      - name: Python regression suite
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Build and source release contracts
+        run: |
+          python scripts/check_build_contract.py
+          python scripts/check_release_contract.py
+      - name: Export exact source with pinned submodules
+        run: python scripts/package_source.py --output "${{ runner.temp }}/vynxdesk-source.zip"
+
+  windows-contracts:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Isolated native Windows input regressions
+        run: python scripts/tests/windows/input_probe.py
+      - name: Windows PowerShell 5.1 distribution fixtures
+        shell: powershell
+        run: ./scripts/tests/windows/distribution.ps1
+      - name: PowerShell 7 distribution fixtures
+        shell: pwsh
+        run: ./scripts/tests/windows/distribution.ps1

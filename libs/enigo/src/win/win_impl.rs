@@ -62,7 +62,6 @@ fn input_compatibility_profile() -> InputCompatibilityProfile {
     })
 }
 
-#[cfg(feature = "windows-user-input-plus")]
 fn legacy_keyboard_lparam(scan: u16, flags: u32) -> LPARAM {
     let mut value = 1 | ((scan as LPARAM & 0xFF) << 16);
     if flags & KEYEVENTF_EXTENDEDKEY != 0 {
@@ -385,7 +384,7 @@ fn keybd_event(mut flags: u32, vk: u16, scan: u16) -> DWORD {
                 } else {
                     WM_KEYDOWN
                 };
-                let lparam = (scan as LPARAM) << 16 | 1;
+                let lparam = legacy_keyboard_lparam(scan, flags);
                 PostMessageW(hwnd, msg, vk as WPARAM, lparam);
             }
         }
@@ -394,38 +393,12 @@ fn keybd_event(mut flags: u32, vk: u16, scan: u16) -> DWORD {
 }
 
 fn get_error() -> String {
-    unsafe {
-        let buff_size = 256;
-        let mut buff: Vec<u16> = Vec::with_capacity(buff_size);
-        buff.resize(buff_size, 0);
-        let errno = GetLastError();
-        let chars_copied = FormatMessageW(
-            FORMAT_MESSAGE_IGNORE_INSERTS
-                | FORMAT_MESSAGE_FROM_SYSTEM
-                | FORMAT_MESSAGE_ARGUMENT_ARRAY,
-            std::ptr::null(),
-            errno,
-            0,
-            buff.as_mut_ptr(),
-            (buff_size + 1) as u32,
-            std::ptr::null_mut(),
-        );
-        if chars_copied == 0 {
-            return "".to_owned();
-        }
-        let mut curr_char: usize = chars_copied as usize;
-        while curr_char > 0 {
-            let ch = buff[curr_char];
-
-            if ch >= ' ' as u16 {
-                break;
-            }
-            curr_char -= 1;
-        }
-        let sl = std::slice::from_raw_parts(buff.as_ptr(), curr_char);
-        let err_msg = String::from_utf16(sl);
-        return err_msg.unwrap_or("".to_owned());
+    let errno = unsafe { GetLastError() };
+    if errno == 0 {
+        // SendInput may be blocked by UIPI without setting a useful last-error code.
+        return "Windows did not report an input error code; check foreground focus and process integrity (UIPI).".to_owned();
     }
+    std::io::Error::from_raw_os_error(errno as i32).to_string()
 }
 
 impl MouseControllable for Enigo {
@@ -850,5 +823,32 @@ mod input_compatibility_tests {
         let (previous, current) = update_legacy_mouse_buttons(MOUSEEVENTF_LEFTUP, 0);
         assert_eq!(previous, MK_LBUTTON as usize);
         assert_eq!(current, 0);
+    }
+}
+
+#[cfg(test)]
+mod input_error_regressions {
+    use super::*;
+    extern "system" {
+        fn SetLastError(error: DWORD);
+    }
+
+    #[test]
+    fn known_error_keeps_complete_os_message() {
+        let expected = std::io::Error::from_raw_os_error(5).to_string();
+        unsafe { SetLastError(5) };
+        assert_eq!(get_error(), expected);
+    }
+
+    #[test]
+    fn unknown_error_is_never_silent_success() {
+        unsafe { SetLastError(0xE0000001) };
+        assert!(!get_error().is_empty());
+    }
+
+    #[test]
+    fn zero_last_error_explains_unreported_input_failure() {
+        unsafe { SetLastError(0) };
+        assert!(get_error().contains("UIPI"));
     }
 }

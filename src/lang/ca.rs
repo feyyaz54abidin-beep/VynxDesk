@@ -780,5 +780,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Idle", ""),
         ("Secure", ""),
         ("Unverified", ""),
+        ("Service subscription", ""),
+        ("Activation code", ""),
+        ("Activate subscription", ""),
+        ("Subscription expires", ""),
+        ("Managed service licensing does not restrict standard remote desktop.", ""),
     ].iter().cloned().collect();
 }

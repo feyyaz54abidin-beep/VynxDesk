@@ -64,3 +64,11 @@ flutter/web/
 # Generated Flutter and hardware build trees
 /flutter/**/ephemeral/
 /hardware/**/build/
+
+# VYNX managed-service operator state (store outside the checkout in production)
+/services/licensing/*.db*
+/services/licensing/*.pem
+/services/licensing/.venv/
+/flutter/android/key.properties
+*.jks
+*.keystore

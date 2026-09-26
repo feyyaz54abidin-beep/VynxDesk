@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-if (-not $IsWindows) {
+if ($env:OS -ne "Windows_NT") {
     throw "VynxDesk service installation is supported only on Windows."
 }
 
