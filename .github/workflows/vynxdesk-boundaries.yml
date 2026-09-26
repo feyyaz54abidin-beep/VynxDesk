@@ -1,0 +1,94 @@
+name: VynxDesk runtime boundary regressions
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'services/licensing/**'
+      - 'scripts/check_android_apk.py'
+      - 'scripts/tests/**'
+      - 'flutter/lib/services/service_license_client.dart'
+      - 'flutter/test/service_license*'
+      - '.github/workflows/vynxdesk-boundaries.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: vynx-boundaries-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-bridge:
+    uses: ./.github/workflows/bridge.yml
+  service-and-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install declared service dependencies
+        run: |
+          python3 -m venv "$RUNNER_TEMP/license-venv"
+          echo "$RUNNER_TEMP/license-venv/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/license-venv/bin/pip" install -r services/licensing/requirements-test.txt PyYAML==6.0.2 pip-audit==2.10.1
+      - name: Runtime boundary and source regression suites
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s services/licensing/tests -v 2>&1 | tee "$RUNNER_TEMP/service-tests.log"
+          python -m unittest discover -s scripts/tests -v 2>&1 | tee "$RUNNER_TEMP/source-tests.log"
+          python scripts/check_build_contract.py
+          python scripts/check_release_contract.py
+          python scripts/vynx_brand.py --check
+      - name: Audit declared production dependencies
+        run: pip-audit -r services/licensing/requirements.txt --format json --output "$RUNNER_TEMP/service-audit.json"
+      - name: Preserve service test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-service-boundary-evidence
+          path: |
+            ${{ runner.temp }}/service-tests.log
+            ${{ runner.temp }}/source-tests.log
+            ${{ runner.temp }}/service-audit.json
+          retention-days: 14
+          if-no-files-found: warn
+  flutter-service-boundaries:
+    needs: generate-bridge
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Restore the current run's generated Rust API bridge
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: bridge-artifact
+          path: .
+      - uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225
+        with:
+          channel: stable
+          flutter-version: '3.24.5'
+          cache: true
+      - name: Analyze and test current Flutter source
+        working-directory: flutter
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/flutter-analysis.log"
+          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/flutter-tests.log"
+      - name: Preserve actual Flutter test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-flutter-boundary-evidence
+          path: |
+            ${{ runner.temp }}/flutter-analysis.log
+            ${{ runner.temp }}/flutter-tests.log
+          retention-days: 14
+          if-no-files-found: warn

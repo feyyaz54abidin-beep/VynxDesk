@@ -44,7 +44,8 @@ void main() {
         }
         expect(data['code'], code);
         expect(data['challenge'], nonce);
-        return http.Response(jsonEncode({'activation_id': id}), 200);
+        return http.Response(jsonEncode({'activation_id': id, 'token': 'SERVER-TOKEN',
+          'expires_in': 300, 'service': 'vynxdesk-managed-devices'}), 200);
       }));
     await client.activate(code);
     expect(device.activation, id);
@@ -87,9 +88,10 @@ void main() {
           return http.Response(jsonEncode({'challenge': 'x' * 43}), 200);
         }
         if (request.url.path == '/v1/refresh') {
-          return http.Response('{"token":"SERVER-TOKEN"}', 200);
+          return http.Response(jsonEncode({'activation_id': device.activation, 'token': 'SERVER-TOKEN',
+            'expires_in': 300, 'service': 'vynxdesk-managed-devices'}), 200);
         }
-        return http.Response('{"devices":[],"max_devices":2,"expires_at":1800000100,"relay_authorization":"not-integrated"}', 200);
+        return http.Response('{"devices":[],"max_devices":2,"expires_at":1800000100,"relay_authorization":"not-integrated","service":"vynxdesk-managed-devices"}', 200);
       }));
     final result = await client.devices();
     expect(result['devices'], isEmpty);

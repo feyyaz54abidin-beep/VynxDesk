@@ -19,11 +19,13 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
+import stat
 import time
 from typing import Annotated, Callable, Literal
 import uuid
 from urllib.parse import urlsplit
 from starlette.concurrency import run_in_threadpool
+from starlette.requests import ClientDisconnect
 
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes, serialization
@@ -72,13 +74,47 @@ def load_device_key(value: str) -> tuple[bytes, ec.EllipticCurvePublicKey]:
         raise Denied(400, 'invalid_device_key') from None
 
 
+def prepare_database(path: Path):
+    """Create privately before SQLite/WAL opens it; never repair unsafe paths silently."""
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    parent = path.parent.lstat()
+    if not stat.S_ISDIR(parent.st_mode):
+        raise ValueError('Database directory must not be a symlink')
+    if os.name != 'nt' and (parent.st_mode & 0o077 or parent.st_uid != os.geteuid()):
+        raise PermissionError('Database directory must be private and owned by the service account')
+    try:
+        descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+    except FileExistsError:
+        pass
+    else:
+        os.close(descriptor)
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        raise ValueError('Database must be a regular, single-link private file')
+    if os.name != 'nt' and (info.st_mode & 0o077 or info.st_uid != os.geteuid()):
+        raise PermissionError('Database file must be private and owned by the service account')
+
+
+def unique_json_object(pairs):
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError('Duplicate JSON field')
+        result[name] = value
+    return result
+
+
+def reject_json_constant(value):
+    raise ValueError('Nonfinite JSON value')
+
+
 class LicenseStore:
     def __init__(self, database: Path, signing_key: ed25519.Ed25519PrivateKey,
                  *, clock: Callable[[], float] = time.time):
         if not isinstance(signing_key, ed25519.Ed25519PrivateKey):
             raise ValueError('An Ed25519 signing key is required')
-        self.database, self.signing_key, self.clock = Path(database), signing_key, clock
-        self.database.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self.database, self.signing_key, self.clock = Path(database).absolute(), signing_key, clock
+        prepare_database(self.database)
         self.kid = sha(signing_key.public_key().public_bytes_raw())[:16]
         self.rate_salt = hashlib.sha256(b'VYNXDESK-RATE/1' + signing_key.private_bytes_raw()).digest()
         with self.connection() as db:
@@ -104,12 +140,10 @@ class LicenseStore:
                 identity TEXT NOT NULL, bucket INTEGER NOT NULL, count INTEGER NOT NULL,
                 PRIMARY KEY(identity, bucket));
             ''')
-        if os.name != 'nt':
-            os.chmod(self.database, 0o600)
 
     @contextmanager
     def connection(self, transaction: bool = False):
-        db = sqlite3.connect(self.database, timeout=5, isolation_level=None)
+        db = sqlite3.connect(self.database.as_uri() + '?mode=rw', uri=True, timeout=5, isolation_level=None)
         db.row_factory = sqlite3.Row
         db.execute('PRAGMA foreign_keys=ON')
         try:
@@ -373,12 +407,20 @@ def create_app(store: LicenseStore, *, source_url: str | None = None) -> FastAPI
             except sqlite3.Error:
                 return error(503, 'service_unavailable')
             if request.method == 'POST':
-                length = request.headers.get('content-length', '')
-                if not length.isdecimal():
+                lengths = request.headers.getlist('content-length')
+                if not lengths:
                     return error(411, 'content_length_required')
-                if int(length) > MAX_BODY:
+                if len(lengths) != 1 or 'transfer-encoding' in request.headers:
+                    return error(400, 'invalid_content_length')
+                length = lengths[0]
+                if not re.fullmatch(r'[0-9]+', length):
+                    return error(400, 'invalid_content_length')
+                # Bound before int(): thousands of digits otherwise raise ValueError.
+                length = length.lstrip('0') or '0'
+                if len(length) > len(str(MAX_BODY)) or int(length) > MAX_BODY:
                     return error(413, 'request_too_large')
-                if request.headers.get('content-type', '').split(';')[0].strip().lower() != 'application/json':
+                content_types = request.headers.getlist('content-type')
+                if len(content_types) != 1 or content_types[0].split(';')[0].strip().lower() != 'application/json':
                     return error(415, 'json_required')
                 body = bytearray()
                 try:
@@ -389,8 +431,17 @@ def create_app(store: LicenseStore, *, source_url: str | None = None) -> FastAPI
                             body.extend(chunk)
                 except TimeoutError:
                     return error(408, 'request_timeout')
+                except ClientDisconnect:
+                    return error(400, 'incomplete_request')
                 if len(body) != int(length):
                     return error(400, 'invalid_content_length')
+                try:
+                    decoded = json.loads(body, object_pairs_hook=unique_json_object,
+                                         parse_constant=reject_json_constant)
+                    if not isinstance(decoded, dict):
+                        raise ValueError('Object required')
+                except (ValueError, RecursionError):
+                    return error(422, 'invalid_request')
                 # Starlette's cached request replays this body to the ASGI router.
                 request._body = bytes(body)
         try:
@@ -410,7 +461,14 @@ def create_app(store: LicenseStore, *, source_url: str | None = None) -> FastAPI
     @app.get('/health')
     def health():
         with store.connection() as db:
-            db.execute('SELECT 1').fetchone()
+            for query in (
+                'SELECT id,code_hash,expires_at,max_devices,revoked FROM licenses LIMIT 0',
+                'SELECT id,license_id,key_id,public_key,activated_at,revoked FROM devices LIMIT 0',
+                'SELECT nonce,public_key,key_id,operation,binding,expires_at FROM challenges LIMIT 0',
+                'SELECT identity,bucket,count FROM request_rates LIMIT 0',
+                'SELECT id,occurred_at,actor,action,license_id,device_id,details FROM operator_events LIMIT 0',
+            ):
+                db.execute(query).fetchall()
         return {'status': 'ok', 'service': AUDIENCE}
 
     @app.post('/v1/challenges')

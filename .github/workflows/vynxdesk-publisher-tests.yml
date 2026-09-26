@@ -1,0 +1,56 @@
+name: VynxDesk publisher identity regressions
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/vynxdesk-audit-fixes-20260926]
+    paths:
+      - 'res/commercial-release.ps1'
+      - 'scripts/tests/windows/publisher.ps1'
+      - '.github/workflows/vynxdesk-publisher-tests.yml'
+  pull_request:
+    paths:
+      - 'res/commercial-release.ps1'
+      - 'scripts/tests/windows/publisher.ps1'
+      - '.github/workflows/vynxdesk-publisher-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vynx-publisher-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publisher-policy:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Windows PowerShell 5.1 publisher policy
+        shell: powershell
+        run: |
+          & ./scripts/tests/windows/publisher.ps1 *> "$env:RUNNER_TEMP/publisher-ps51.log"
+          $result = $LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/publisher-ps51.log"
+          exit $result
+      - name: PowerShell 7 publisher policy
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          & ./scripts/tests/windows/publisher.ps1 *> "$env:RUNNER_TEMP/publisher-ps7.log"
+          $result = $LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/publisher-ps7.log"
+          exit $result
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-publisher-evidence
+          path: |
+            ${{ runner.temp }}/publisher-ps51.log
+            ${{ runner.temp }}/publisher-ps7.log
+          retention-days: 14
+          if-no-files-found: error
