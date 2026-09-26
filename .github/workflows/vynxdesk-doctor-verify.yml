@@ -8,31 +8,26 @@ on:
       - '.github/workflows/vynxdesk-doctor-verify.yml'
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 jobs:
-  generate-bridge:
-    uses: ./.github/workflows/bridge.yml
   verify-candidate:
-    needs: generate-bridge
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    permissions:
-      contents: write
-      actions: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
-      - name: Apply only the reviewed feature patch
+      - name: Apply only the reviewed feature and test correction
         shell: python {0}
         run: |
           import base64, hashlib, lzma, os, subprocess
           from pathlib import Path
           subprocess.run(['git','merge-base','--is-ancestor','9264034ef407a8ac0cebb2262ad12dd66d2a4d76','HEAD'],check=True)
+          subprocess.run(['git','diff','--exit-code','769a005d7ec80da3c75572f95a5e52e7e388a88d','HEAD','--','src','libs','Cargo.toml','Cargo.lock','.github/workflows/bridge.yml','flutter/pubspec.yaml'],check=True)
           parts=[Path(f'.github/maintenance/connection-doctor.{i}') for i in range(3)]
           patch=lzma.decompress(base64.b64decode(''.join(p.read_text() for p in parts),validate=True))
           assert hashlib.sha256(patch).hexdigest()=='6ef4dda4a9e92abc7ad6cf3f0e583f2d6f3ecb97028eaa296747bc4dedf3b0c1'
@@ -40,7 +35,11 @@ jobs:
           out.write_bytes(patch)
           subprocess.run(['git','apply','--check',str(out)],check=True)
           subprocess.run(['git','apply',str(out)],check=True)
-          for p in parts: p.unlink()
+          correction=Path('.github/maintenance/connection-doctor.correction')
+          assert hashlib.sha256(correction.read_bytes()).hexdigest()=='fca56a3338a8b1de2273f82dc9823861a245d1a99a4d7a2a590f62a96a3070e2'
+          subprocess.run(['git','apply','--check',str(correction)],check=True)
+          subprocess.run(['git','apply',str(correction)],check=True)
+          for p in parts+[correction]: p.unlink()
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: '3.24.5'
@@ -69,10 +68,12 @@ jobs:
           "$RUNNER_TEMP/source-venv/bin/python" -m unittest discover -s scripts/tests -v 2>&1 | tee "$RUNNER_TEMP/source-tests.log"
           "$RUNNER_TEMP/source-venv/bin/python" scripts/check_build_contract.py
           python3 scripts/vynx_brand.py --check
-      - name: Restore current run bridge for unchanged native API
+      - name: Restore verified unchanged native API bridge
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: bridge-artifact
+          run-id: 36223925498
+          github-token: ${{ github.token }}
           path: .
       - name: Analyze and test the complete current Flutter application
         working-directory: flutter
