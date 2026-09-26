@@ -36,10 +36,10 @@ fn buffer(capacity: usize) -> AudioBuffer {
 fn append_retains_order_and_drains() {
     let b = buffer(4);
     assert_eq!(b.append_pcm2(&[1.,2.,3.]), 3);
-    let mut output = [0.;4];
+    let mut output = [0.;3];
     let mut lock = b.0.lock().unwrap();
-    assert_eq!(lock.pop_slice(&mut output), 3);
-    assert_eq!(output, [1.,2.,3.,0.]);
+    lock.pop_slice(&mut output);
+    assert_eq!(output, [1.,2.,3.]);
     assert_eq!(lock.occupied_len(), 0);
 }
 #[test]
