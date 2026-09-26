@@ -1,0 +1,61 @@
+name: VynxDesk runtime boundary regressions
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/vynxdesk-audit-fixes-20260926]
+  pull_request:
+    paths:
+      - 'services/licensing/**'
+      - 'scripts/check_android_apk.py'
+      - 'scripts/tests/**'
+      - 'flutter/lib/services/service_license_client.dart'
+      - 'flutter/test/service_license*'
+      - '.github/workflows/vynxdesk-boundaries.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: vynx-boundaries-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-service-boundaries:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Restore bridge for the unchanged Rust API
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: bridge-artifact
+          run-id: 36201561934
+          github-token: ${{ github.token }}
+          path: .
+      - uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225
+        with:
+          channel: stable
+          flutter-version: '3.24.5'
+          cache: true
+      - name: Analyze and test current Flutter source
+        working-directory: flutter
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-warnings --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/flutter-analysis.log"
+          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/flutter-tests.log"
+      - name: Preserve actual test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-flutter-boundary-evidence
+          path: |
+            ${{ runner.temp }}/flutter-analysis.log
+            ${{ runner.temp }}/flutter-tests.log
+          retention-days: 14
+          if-no-files-found: warn
