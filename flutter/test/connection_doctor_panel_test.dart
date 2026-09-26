@@ -125,8 +125,9 @@ void main() {
     final writes = <String>[];
     tester.binding.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == 'Clipboard.setData')
+      if (call.method == 'Clipboard.setData') {
         writes.add(call.arguments['text'] as String);
+      }
       return null;
     });
     addTearDown(() => tester.binding.defaultBinaryMessenger

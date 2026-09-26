@@ -118,9 +118,10 @@ class _ConnectionDoctorPanelState extends State<ConnectionDoctorPanel> {
       }
       if (mounted) setState(() => _copyStatus = 'Report copied');
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() =>
             _copyStatus = 'Copy failed. Select the report text or try again.');
+      }
     } finally {
       if (mounted) setState(() => _copying = false);
     }
