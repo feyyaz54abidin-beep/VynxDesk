@@ -1,0 +1,74 @@
+name: Apply reviewed VynxDesk runtime fixes
+
+on:
+  push:
+    branches: [codex/vynxdesk-audit-fixes-20260926]
+    paths:
+      - '.github/maintenance/audit-fixes.*'
+      - '.github/workflows/vynxdesk-apply-audit.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-reviewed-source:
+    if: >-
+      github.repository == 'feyyaz54abidin-beep/VynxDesk' && github.event.head_commit.message == 'ci: validate reviewed runtime boundary patch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact reviewed patch
+        shell: python {0}
+        run: |
+          import base64, hashlib, lzma, os, subprocess
+          from pathlib import Path
+          subprocess.run(['git','merge-base','--is-ancestor','58b33df11553b3c92286c27c099bdad4d96d4bf9','HEAD'],check=True)
+          parts = [Path(f'.github/maintenance/audit-fixes.{i}') for i in range(3)]
+          patch = lzma.decompress(base64.b64decode(''.join(p.read_text() for p in parts),validate=True))
+          assert hashlib.sha256(patch).hexdigest() == 'a97ac3a3099f5f9be98a0eb4d28c71b063326738d68e5f19788ca14d638748fa'
+          output = Path(os.environ['RUNNER_TEMP'])/'reviewed-audit.patch'
+          output.write_bytes(patch)
+          subprocess.run(['git','apply','--check',str(output)],check=True)
+          subprocess.run(['git','apply',str(output)],check=True)
+          for part in parts: part.unlink()
+      - name: Test declared service and source dependencies
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/license-venv"
+          "$RUNNER_TEMP/license-venv/bin/pip" install -r services/licensing/requirements-test.txt PyYAML==6.0.2 pip-audit==2.10.1
+          "$RUNNER_TEMP/license-venv/bin/python" -m unittest discover -s services/licensing/tests -v 2>&1 | tee "$RUNNER_TEMP/service-tests.log"
+          "$RUNNER_TEMP/license-venv/bin/python" -m unittest discover -s scripts/tests -v 2>&1 | tee "$RUNNER_TEMP/source-tests.log"
+          "$RUNNER_TEMP/license-venv/bin/pip-audit" -r services/licensing/requirements.txt --format json --output "$RUNNER_TEMP/service-audit.json"
+      - name: Commit the bounded source changes
+        run: |
+          set -euo pipefail
+          git diff --check
+          git add services/licensing/service.py services/licensing/tests/test_runtime_boundaries.py scripts/check_android_apk.py scripts/tests/test_android_security.py flutter/lib/services/service_license_client.dart flutter/test/service_license_client_test.dart res/commercial-release.ps1 .github/maintenance/audit-fixes.*
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix: harden service storage, client responses and publisher boundaries'
+          git rev-parse HEAD > "$RUNNER_TEMP/COMMIT.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/TREE.txt"
+      - name: Push only the isolated development branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/codex/vynxdesk-audit-fixes-20260926
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-reviewed-audit-evidence
+          path: |
+            ${{ runner.temp }}/service-tests.log
+            ${{ runner.temp }}/source-tests.log
+            ${{ runner.temp }}/service-audit.json
+            ${{ runner.temp }}/COMMIT.txt
+            ${{ runner.temp }}/TREE.txt
+          retention-days: 14
+          if-no-files-found: warn
