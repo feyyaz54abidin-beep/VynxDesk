@@ -8,7 +8,8 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / 'src/client.rs').read_text(encoding='utf-8')
-version = tomllib.loads((ROOT / 'Cargo.toml').read_text())['dependencies']['ringbuf']
+manifest = tomllib.loads((ROOT / 'Cargo.toml').read_text())
+version = next(target['dependencies']['ringbuf'] for target in manifest['target'].values() if 'ringbuf' in target.get('dependencies', {}))
 start = source.index('struct AudioBuffer(')
 end = source.index('\nimpl AudioHandler {', start)
 audio = source[start:end].replace('#[cfg(not(target_os = "linux"))]\n', '')
