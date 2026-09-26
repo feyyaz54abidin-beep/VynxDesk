@@ -1,0 +1,47 @@
+name: VYNX Connection Doctor focused tests
+
+on:
+  push:
+    branches: [codex/vynxdesk-connection-doctor-20260926]
+    paths:
+      - 'flutter/lib/features/connection_doctor/**'
+      - 'flutter/test/connection_doctor*'
+      - '.github/workflows/vynxdesk-doctor-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+      - name: Test exact feature sources without native bridge stubs
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe="$RUNNER_TEMP/doctor-probe"
+          mkdir -p "$probe/lib/features" "$probe/test"
+          cp -r flutter/lib/features/connection_doctor "$probe/lib/features/"
+          cp flutter/test/connection_doctor*test.dart "$probe/test/"
+          printf 'name: flutter_hbb\nenvironment:\n  sdk: ">=3.1.0 <4.0.0"\ndependencies:\n  flutter:\n    sdk: flutter\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n' > "$probe/pubspec.yaml"
+          cd "$probe"
+          flutter pub get
+          flutter test --reporter expanded 2>&1 | tee "$RUNNER_TEMP/doctor-tests.log"
+      - name: Preserve test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-doctor-focused-evidence
+          path: ${{ runner.temp }}/doctor-tests.log
+          retention-days: 14
+          if-no-files-found: warn
