@@ -3,16 +3,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_hbb/features/connection_doctor/doctor.dart';
 
 Map<String, dynamic> snapshot({String state = 'connected'}) => {
-  'lifecycle': state, 'secure': true, 'direct': true, 'transport': 'TCP',
-  'delay_ms': 30, 'target_bitrate_kbps': 3200, 'fps': {'0': 60},
-  'codec': 'H264', 'chroma': '4:2:0',
-};
-Set<String> codes(DoctorReport report) => report.findings.map((f) => f.code).toSet();
+      'lifecycle': state,
+      'secure': true,
+      'direct': true,
+      'transport': 'TCP',
+      'delay_ms': 30,
+      'target_bitrate_kbps': 3200,
+      'fps': {'0': 60},
+      'codec': 'H264',
+      'chroma': '4:2:0',
+    };
+Set<String> codes(DoctorReport report) =>
+    report.findings.map((f) => f.code).toSet();
 
 void main() {
   late Duration now;
   late ConnectionDoctor doctor;
-  setUp(() { now = Duration.zero; doctor = ConnectionDoctor(elapsed: () => now); });
+  setUp(() {
+    now = Duration.zero;
+    doctor = ConnectionDoctor(elapsed: () => now);
+  });
 
   test('missing telemetry is unavailable, not a healthy session', () {
     expect(doctor.evaluate().freshness, 'unavailable');
@@ -27,8 +37,11 @@ void main() {
     expect(codes(report), contains('limited_observation'));
   });
   test('relay path is informational, not a performance failure', () {
-    doctor.ingest(snapshot()..['direct'] = false..['transport'] = 'WebRTC');
-    final relay = doctor.evaluate().findings.singleWhere((f) => f.code == 'relayed');
+    doctor.ingest(snapshot()
+      ..['direct'] = false
+      ..['transport'] = 'WebRTC');
+    final relay =
+        doctor.evaluate().findings.singleWhere((f) => f.code == 'relayed');
     expect(relay.severity, 'info');
     expect(doctor.evaluate().summary, 'observing');
   });
@@ -50,7 +63,8 @@ void main() {
   });
   test('low frames are advisory and never proof of network failure', () {
     doctor.ingest(snapshot()..['fps'] = {'0': 0, '1': 60});
-    final item = doctor.evaluate().findings.singleWhere((f) => f.code == 'few_frames');
+    final item =
+        doctor.evaluate().findings.singleWhere((f) => f.code == 'few_frames');
     expect(item.severity, 'info');
     expect(item.detail, contains('static screen'));
     expect(codes(doctor.evaluate()), isNot(contains('network_failure')));
@@ -81,42 +95,71 @@ void main() {
     expect(doctor.evaluate().metrics['latency_ms'], isNull);
     expect(codes(doctor.evaluate()), contains('security_unknown'));
   });
-  test('malformed lifecycle cannot retain earlier apparently healthy state', () {
+  test('malformed lifecycle cannot retain earlier apparently healthy state',
+      () {
     doctor.ingest(snapshot());
-    doctor.ingest({'lifecycle': ['connected'], 'delay_ms': 5});
+    doctor.ingest({
+      'lifecycle': ['connected'],
+      'delay_ms': 5
+    });
     expect(doctor.evaluate().freshness, 'unavailable');
   });
   test('keyboard denial and view-only are distinct current observations', () {
     doctor.ingest(snapshot());
-    expect(codes(doctor.evaluate(keyboardAllowed: false)), contains('keyboard_denied'));
+    expect(codes(doctor.evaluate(keyboardAllowed: false)),
+        contains('keyboard_denied'));
     expect(codes(doctor.evaluate(viewOnly: true)), contains('view_only'));
     expect(codes(doctor.evaluate()), isNot(contains('keyboard_denied')));
   });
   test('permissions are not guessed from absent telemetry or stale state', () {
-    expect(codes(doctor.evaluate(keyboardAllowed: false)), isNot(contains('keyboard_denied')));
+    expect(codes(doctor.evaluate(keyboardAllowed: false)),
+        isNot(contains('keyboard_denied')));
     doctor.ingest(snapshot());
     now = const Duration(seconds: 20);
-    expect(codes(doctor.evaluate(keyboardAllowed: false)), isNot(contains('keyboard_denied')));
+    expect(codes(doctor.evaluate(keyboardAllowed: false)),
+        isNot(contains('keyboard_denied')));
   });
-  test('arbitrary telemetry fields and free-form values cannot enter report', () {
+  test('arbitrary telemetry fields and free-form values cannot enter report',
+      () {
     const secret = 'secret-user-192.0.2.1-password';
-    doctor.ingest(snapshot()..addAll({'peer_id': secret, 'token': secret,
-      'transport': secret, 'codec': secret, 'speed': secret, 'chroma': secret,
-      'fps': {secret: 60}, 'delay_ms': secret}));
+    doctor.ingest(snapshot()
+      ..addAll({
+        'peer_id': secret,
+        'token': secret,
+        'transport': secret,
+        'codec': secret,
+        'speed': secret,
+        'chroma': secret,
+        'fps': {secret: 60},
+        'delay_ms': secret
+      }));
     final encoded = jsonEncode(doctor.evaluate().toJson());
     expect(encoded, isNot(contains(secret)));
     expect(encoded, isNot(contains('peer_id')));
     expect(encoded, isNot(contains('token')));
   });
   test('invalid numeric types and unreasonable values become unknown', () {
-    for (final value in [true, -1, 1.5, double.nan, double.infinity, '42\n', '9' * 10000]) {
-      doctor.ingest(snapshot()..['delay_ms'] = value..['target_bitrate_kbps'] = value);
+    for (final value in [
+      true,
+      -1,
+      1.5,
+      double.nan,
+      double.infinity,
+      '42\n',
+      '9' * 10000
+    ]) {
+      doctor.ingest(snapshot()
+        ..['delay_ms'] = value
+        ..['target_bitrate_kbps'] = value);
       expect(doctor.evaluate().metrics['latency_ms'], isNull);
       expect(doctor.evaluate().metrics['target_bitrate_kbps'], isNull);
     }
   });
   test('bounded legacy integers and booleans are supported', () {
-    doctor.ingest(snapshot()..['secure'] = 'true'..['direct'] = 'false'..['delay_ms'] = '70');
+    doctor.ingest(snapshot()
+      ..['secure'] = 'true'
+      ..['direct'] = 'false'
+      ..['delay_ms'] = '70');
     expect(doctor.evaluate().metrics['secure'], true);
     expect(doctor.evaluate().metrics['latency_ms'], 70);
   });
@@ -129,11 +172,19 @@ void main() {
     expect(() => report.metrics['latency_ms'] = 5, throwsUnsupportedError);
     expect(() => report.findings.clear(), throwsUnsupportedError);
   });
-  test('hostile fps map is discarded and valid display indices are bounded', () {
+  test('hostile fps map is discarded and valid display indices are bounded',
+      () {
     doctor.ingest(snapshot()..['fps'] = {'-1': 0, 'secret': 0, '0': 60});
     expect(doctor.evaluate().metrics['minimum_fps'], 60);
-    doctor.ingest(snapshot()..['fps'] = {for (int i = 0; i < 65; i++) '$i': 60});
+    doctor
+        .ingest(snapshot()..['fps'] = {for (int i = 0; i < 65; i++) '$i': 60});
     expect(doctor.evaluate().metrics['minimum_fps'], isNull);
+  });
+  test('reset removes the previous device observation', () {
+    doctor.ingest(snapshot());
+    doctor.reset();
+    expect(doctor.evaluate().freshness, 'unavailable');
+    expect(doctor.evaluate().metrics, isEmpty);
   });
   test('clock discontinuity is unavailable rather than negative age', () {
     now = const Duration(seconds: 10);

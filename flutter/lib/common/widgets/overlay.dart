@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../../consts.dart';
+import '../../features/connection_doctor/panel.dart';
 import '../../desktop/widgets/tabbar_widget.dart';
 import '../../models/chat_model.dart';
 import '../../models/model.dart';
@@ -604,6 +605,26 @@ class QualityMonitor extends StatelessWidget {
                             translate("Security"),
                             translate(qualityMonitorModel
                                 .connectionInsight!.securityLabel)),
+                      ConnectionDoctorButton(
+                        updates: Listenable.merge([
+                          qualityMonitorModel,
+                          qualityMonitorModel.parent.target?.ffiModel,
+                        ]),
+                        readReport: () => qualityMonitorModel.connectionDoctor.evaluate(
+                          keyboardAllowed: qualityMonitorModel.parent.target?.ffiModel.permissions['keyboard'],
+                          viewOnly: qualityMonitorModel.parent.target?.ffiModel.viewOnly,
+                        ),
+                        translate: (key) => translate(key),
+                        present: (panel) async {
+                          final ffi = qualityMonitorModel.parent.target;
+                          if (ffi == null) return;
+                          await ffi.dialogManager.show((_, close, context) => CustomAlertDialog(
+                            content: panel,
+                            actions: [dialogButton('Close', onPressed: close)],
+                            onCancel: close,
+                          ), tag: 'vynx-connection-doctor', backDismiss: true);
+                        },
+                      ),
                       _row("Speed", qualityMonitorModel.data.speed ?? '-'),
                       _row("FPS", qualityMonitorModel.data.fps ?? '-'),
                       // let delay be 0 if fps is 0
