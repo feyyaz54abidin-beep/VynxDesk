@@ -9,7 +9,9 @@ Constraints: preserve AGPL notices, internal application IDs, source rights and 
 - [x] Reconstruct PR #2 and #3 from exact tree hashes; run combined existing Python suites.
 - [x] Add failing branding, operator-audit and backup tests; retain failures as evidence.
 - [x] Implement canonical product links, empty unconfigured account fallback, brand-domain boundary tests, VYNX deployment profile and source/private-development handoff.
-- [x] Implement transactional operator journal and restrictive online backup CLI; test failures, replay of operator commands, corrupted databases, symlinks and no overwrite.
-- [ ] Verify the combined candidate locally and on clean CI; publish only an isolated branch/PR and report all remaining blockers.
+- [x] Implement transactional operator journal and restrictive online backup CLI; test rollback on journal failure, corrupted databases, symlinks and no overwrite.
+- [x] Verify the combined candidate locally and on clean CI; publish only an isolated branch/PR and report all remaining blockers.
 
 Review focus: mixed product/API identities; accidental secret export; audit failures must roll back mutations; WAL backups must include committed rows; private development must not erase source-access obligations. Full native builds and live Android/Windows acceptance remain separate gates.
+
+Verification evidence: docs/VYNX_INTEGRATION_READINESS.md. Independent reviewer not available; a self-review and minimization pass was performed.
