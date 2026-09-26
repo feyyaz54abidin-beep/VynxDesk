@@ -145,3 +145,7 @@ existing VynxDesk Play Bridge SKU or supply a physical USB device.
 Reference: https://www.gnu.org/licenses/agpl-3.0.html
 Android Keystore: https://developer.android.com/privacy-and-security/keystore
 Flutter limitations: https://docs.flutter.dev/deployment/obfuscate
+
+## VYNX integration additions
+
+See `../../ops/vynx/README.md` for vynx.com.tr destinations, private-development/source-distribution boundaries, transactional operator events (`python service.py audit --limit 100`) and online SQLite backups (`python operations.py PRIVATE_DESTINATION.db`). These do not enable paid P2P/relay enforcement or deploy the service.

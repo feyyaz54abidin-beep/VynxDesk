@@ -96,6 +96,10 @@ class LicenseStore:
                 nonce TEXT PRIMARY KEY, public_key BLOB NOT NULL, key_id TEXT NOT NULL,
                 operation TEXT NOT NULL, binding TEXT NOT NULL, expires_at INTEGER NOT NULL);
               CREATE INDEX IF NOT EXISTS challenge_expiry ON challenges(expires_at);
+              CREATE TABLE IF NOT EXISTS operator_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, occurred_at INTEGER NOT NULL,
+                actor TEXT NOT NULL, action TEXT NOT NULL, license_id TEXT NOT NULL,
+                device_id TEXT, details TEXT NOT NULL);
               CREATE TABLE IF NOT EXISTS request_rates (
                 identity TEXT NOT NULL, bucket INTEGER NOT NULL, count INTEGER NOT NULL,
                 PRIMARY KEY(identity, bucket));
@@ -124,6 +128,19 @@ class LicenseStore:
     def now(self) -> int:
         return int(self.clock())
 
+    def _audit(self, db, action: str, license_id: str, *, device_id=None, details=None):
+        actor = f'uid:{os.getuid()}' if hasattr(os, 'getuid') else 'local-operator'
+        db.execute('INSERT INTO operator_events(occurred_at,actor,action,license_id,device_id,details) VALUES(?,?,?,?,?,?)',
+                   (self.now(), actor, action, license_id, device_id,
+                    json.dumps(details or {}, sort_keys=True, separators=(',', ':'))))
+
+    def audit_events(self, *, limit: int = 100) -> list[dict]:
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ValueError('limit must be 1..1000')
+        with self.connection() as db:
+            rows = db.execute('SELECT * FROM operator_events ORDER BY id DESC LIMIT ?', (limit,)).fetchall()
+        return [{**dict(row), 'details': json.loads(row['details'])} for row in rows]
+
     def issue(self, *, days: int, max_devices: int) -> dict:
         if type(days) is not int or not 1 <= days <= 3650 or type(max_devices) is not int or not 1 <= max_devices <= 1000:
             raise ValueError('days must be 1..3650 and max_devices 1..1000')
@@ -132,6 +149,7 @@ class LicenseStore:
         with self.connection(True) as db:
             db.execute('INSERT INTO licenses(id,code_hash,expires_at,max_devices) VALUES(?,?,?,?)',
                        (lid, sha(code), expiry, max_devices))
+            self._audit(db, 'issue', lid, details={'expires_at': expiry, 'max_devices': max_devices})
         return {'id': lid, 'code': code, 'expires_at': expiry, 'max_devices': max_devices}
 
     def extend(self, license_id: str, *, days: int) -> int:
@@ -143,24 +161,28 @@ class LicenseStore:
                 raise ValueError('Unknown or revoked license')
             expiry = max(self.now(), row['expires_at']) + days * 86400
             db.execute('UPDATE licenses SET expires_at=? WHERE id=?', (expiry, license_id))
+            self._audit(db, 'extend', license_id, details={'expires_at': expiry, 'days': days})
         return expiry
 
     def revoke(self, license_id: str):
         with self.connection(True) as db:
             if db.execute('UPDATE licenses SET revoked=1 WHERE id=?', (license_id,)).rowcount != 1:
                 raise ValueError('Unknown license')
+            self._audit(db, 'revoke', license_id)
 
     def rotate_code(self, license_id: str) -> str:
         code = 'vxd_' + secrets.token_urlsafe(32)
         with self.connection(True) as db:
             if db.execute('UPDATE licenses SET code_hash=? WHERE id=? AND revoked=0', (sha(code), license_id)).rowcount != 1:
                 raise ValueError('Unknown or revoked license')
+            self._audit(db, 'rotate-code', license_id)
         return code
 
     def release_device(self, license_id: str, device_id: str):
         with self.connection(True) as db:
             if db.execute('UPDATE devices SET revoked=1 WHERE id=? AND license_id=?', (device_id, license_id)).rowcount != 1:
                 raise ValueError('Unknown device')
+            self._audit(db, 'release-device', license_id, device_id=device_id)
 
     def rate_limit(self, address: str):
         bucket = self.now() // 60
@@ -440,6 +462,8 @@ def main():
     release = sub.add_parser('release-device')
     release.add_argument('license_id')
     release.add_argument('device_id')
+    audit = sub.add_parser('audit')
+    audit.add_argument('--limit', type=int, default=100)
     args = parser.parse_args()
     if args.command == 'init-key':
         pem = ed25519.Ed25519PrivateKey.generate().private_bytes(serialization.Encoding.PEM,
@@ -458,6 +482,8 @@ def main():
         store.revoke(args.license_id)
     elif args.command == 'rotate-code':
         print(json.dumps({'code': store.rotate_code(args.license_id)}))
+    elif args.command == 'audit':
+        print(json.dumps(store.audit_events(limit=args.limit)))
     else:
         store.release_device(args.license_id, args.device_id)
 
