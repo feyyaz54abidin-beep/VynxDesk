@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
-      - name: Verify exact reviewed patch and apply in isolated runner
+      - name: Verify exact reviewed patches and apply in isolated runner
         shell: python {0}
         run: |
           import base64, hashlib, lzma, os, subprocess
@@ -34,6 +34,12 @@ jobs:
           path.write_bytes(patch)
           subprocess.run(['git','apply','--unidiff-zero','--check',str(path)],check=True)
           subprocess.run(['git','apply','--unidiff-zero',str(path)],check=True)
+          followup = Path('.github/maintenance/android-license.followup.patch').read_bytes().replace(b'\n diff --git ', b'\ndiff --git ')
+          assert hashlib.sha256(followup).hexdigest() == 'f5b6bbbc7f6e2a04fc8ba2ead80d77303e3dbf222233ff4451d60974f12e244b'
+          followup_path = Path(os.environ['RUNNER_TEMP']) / 'android-followup.patch'
+          followup_path.write_bytes(followup)
+          subprocess.run(['git','apply','--check',str(followup_path)],check=True)
+          subprocess.run(['git','apply',str(followup_path)],check=True)
       - name: Install exact service dependency versions
         run: |
           python3 -m venv "$RUNNER_TEMP/license-venv"
@@ -83,7 +89,6 @@ jobs:
           from pathlib import Path
           run=lambda *a: subprocess.run(a, check=True)
           capture=lambda *a: subprocess.check_output(a,text=True).strip()
-          # Preserve only intentional lockfile changes; pub resolution is verification, not an upgrade.
           run('git','checkout','HEAD','--','flutter/pubspec.lock')
           text=Path('flutter/pubspec.lock').read_text()
           import re
@@ -95,7 +100,6 @@ jobs:
           for i, path in enumerate(workflow_paths):
               staged[path]={'sha':capture('git','hash-object','-w',path),'transfer':f'.github/maintenance/verified-workflow-{i}.txt'}
               Path(staged[path]['transfer']).write_bytes(Path(path).read_bytes())
-          # Actual workflow edits are applied by the authorized connector, not GITHUB_TOKEN.
           run('git','checkout','HEAD','--','.github/workflows/flutter-build.yml')
           Path('.github/workflows/vynxdesk-managed-security.yml').unlink()
           run('git','add','-A')
