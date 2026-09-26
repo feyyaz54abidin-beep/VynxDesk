@@ -84,6 +84,7 @@ protobuf {
 android {
     namespace "com.carriez.flutter_hbb"
     compileSdkVersion 36
+    buildFeatures { buildConfig true }
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
 
@@ -116,8 +117,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Customer artifacts must pass the certificate-pinned APK release gate.
             signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules'
         }

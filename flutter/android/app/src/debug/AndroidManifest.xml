@@ -4,4 +4,11 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <application>
+        <receiver android:name=".BootReceiver">
+            <intent-filter>
+                <action android:name="com.carriez.flutter_hbb.DEBUG_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
 </manifest>

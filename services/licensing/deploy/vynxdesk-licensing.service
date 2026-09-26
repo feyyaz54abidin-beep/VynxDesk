@@ -1,0 +1,31 @@
+[Unit]
+Description=VYNX managed-service licensing (not the remote desktop relay)
+After=network.target
+
+[Service]
+Type=simple
+User=vynx-license
+Group=vynx-license
+WorkingDirectory=/opt/vynxdesk/licensing
+EnvironmentFile=/etc/vynxdesk/licensing.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/vynxdesk/licensing/.venv/bin/uvicorn service:production_app --factory --host 127.0.0.1 --port 8091 --workers 1 --no-access-log --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=vynxdesk-licensing
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/vynxdesk-licensing
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
