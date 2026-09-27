@@ -1,0 +1,72 @@
+name: VYNX brand and license operations
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'ops/vynx/**'
+      - 'services/licensing/**'
+      - 'scripts/**'
+      - 'src/common.rs'
+      - 'flutter/lib/common/brand_links.dart'
+      - 'flutter/test/vynx_brand_test.dart'
+      - '.github/workflows/vynxdesk-brand-ops.yml'
+  push:
+    branches: [master, codex/vynxdesk-vynx-integration-20260926]
+    paths:
+      - 'ops/vynx/**'
+      - 'services/licensing/**'
+      - 'scripts/**'
+      - 'src/common.rs'
+      - 'flutter/lib/common/brand_links.dart'
+      - '.github/workflows/vynxdesk-brand-ops.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vynx-brand-ops-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  brand-and-operations:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install declared test dependencies in isolation
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vynx-venv"
+          echo "$RUNNER_TEMP/vynx-venv/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/vynx-venv/bin/pip" install -r services/licensing/requirements-test.txt PyYAML==6.0.2
+      - name: Service and source regressions
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s services/licensing/tests -v 2>&1 | tee "$RUNNER_TEMP/vynx-service-tests.log"
+          python -m unittest discover -s scripts/tests -v 2>&1 | tee "$RUNNER_TEMP/vynx-source-tests.log"
+      - name: Canonical links and source contracts
+        run: |
+          python scripts/vynx_brand.py --check
+          python scripts/check_build_contract.py
+          python scripts/check_release_contract.py
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        with:
+          toolchain: '1.88'
+      - name: Test the actual service-domain classifier
+        run: |
+          set -euo pipefail
+          python scripts/vynx_domain_probe.py 2>&1 | tee "$RUNNER_TEMP/vynx-domain-tests.log"
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynx-brand-operations-evidence
+          path: |
+            ${{ runner.temp }}/vynx-service-tests.log
+            ${{ runner.temp }}/vynx-source-tests.log
+            ${{ runner.temp }}/vynx-domain-tests.log
+          retention-days: 14
+          if-no-files-found: warn

@@ -16,6 +16,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$expectedPublisher = ([string]$CertificateThumbprint).Replace(' ', '').ToUpperInvariant()
+if ($expectedPublisher -and $expectedPublisher -notmatch '\A[0-9A-F]{40}\z') {
+    throw 'The publisher certificate thumbprint must contain exactly 40 hexadecimal digits.'
+}
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $artifactItem = Get-Item -LiteralPath $ArtifactPath
 $sourceItem = Get-Item -LiteralPath $SourceArchive
@@ -144,6 +148,11 @@ foreach ($artifact in $artifacts) {
     }
     if ($signature.Status -eq 'Valid' -and $isProductBinary) {
         $productSignerThumbprints.Add($signature.SignerCertificate.Thumbprint)
+        if (-not $expectedPublisher) {
+            $failures.Add('An explicit publisher certificate thumbprint is required for signed product binaries.')
+        } elseif ($signature.SignerCertificate.Thumbprint -ine $expectedPublisher) {
+            $failures.Add("Product publisher identity mismatch: $($artifact.FullName)")
+        }
     }
 
     if ($isPrimaryExecutable) {

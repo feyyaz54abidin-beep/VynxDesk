@@ -1,3 +1,4 @@
+import 'package:flutter_hbb/common/brand_links.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -21,6 +22,8 @@ import '../widgets/deploy_dialog.dart';
 import '../widgets/dialog.dart';
 import 'home_page.dart';
 import 'scan_page.dart';
+import 'service_license_page.dart';
+import '../../services/service_license_client.dart';
 
 class SettingsPage extends StatefulWidget implements PageShape {
   @override
@@ -36,7 +39,7 @@ class SettingsPage extends StatefulWidget implements PageShape {
   State<SettingsPage> createState() => _SettingsState();
 }
 
-const url = 'https://rustdesk.com/';
+const url = VynxBrand.website;
 
 enum KeepScreenOn {
   never,
@@ -718,6 +721,13 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
     final settings = SettingsList(
       sections: [
         customClientSection,
+        if (isAndroid && serviceApi.isNotEmpty && !disabledSettings && !bind.isDisableAccount())
+          SettingsSection(title: const Text('VYNX'), tiles: [
+            SettingsTile(title: Text(translate('Service subscription')),
+              leading: const Icon(Icons.verified_user),
+              onPressed: (context) => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ServiceLicensePage()))),
+          ]),
         if (!bind.isDisableAccount())
           SettingsSection(
             title: Text(translate('Account')),
@@ -1030,7 +1040,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                 title: Text(translate("Version: ") + version),
                 value: Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text('rustdesk.com',
+                  child: Text('vynx.com.tr',
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                       )),
@@ -1063,7 +1073,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
             SettingsTile(
               title: Text(translate("Privacy Statement")),
               onPressed: (context) =>
-                  launchUrlString('https://rustdesk.com/privacy.html'),
+                  launchUrlString(VynxBrand.privacy),
               leading: Icon(Icons.privacy_tip),
             )
           ],
@@ -1171,17 +1181,17 @@ void showThemeSettings(OverlayDialogManager dialogManager) async {
 void showAbout(OverlayDialogManager dialogManager) {
   dialogManager.show((setState, close, context) {
     return CustomAlertDialog(
-      title: Text(translate('About RustDesk')),
+      title: Text('${translate('About')} VynxDesk'),
       content: Wrap(direction: Axis.vertical, spacing: 12, children: [
         Text('Version: $version'),
         InkWell(
             onTap: () async {
-              const url = 'https://rustdesk.com/';
+              const url = VynxBrand.website;
               await launchUrl(Uri.parse(url));
             },
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('rustdesk.com',
+              child: Text('vynx.com.tr',
                   style: TextStyle(
                     decoration: TextDecoration.underline,
                   )),

@@ -1,0 +1,55 @@
+name: VynxDesk managed-service security
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'services/licensing/**'
+      - 'scripts/**'
+      - 'flutter/android/**'
+      - '.github/workflows/vynxdesk-managed-security.yml'
+  push:
+    branches: [codex/vynxdesk-android-licensing-20260926]
+    paths:
+      - 'services/licensing/**'
+      - 'scripts/**'
+      - 'flutter/android/**'
+      - '.github/workflows/vynxdesk-managed-security.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: managed-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install declared service dependencies in isolation
+        run: |
+          python3 -m venv "$RUNNER_TEMP/license-venv"
+          echo "$RUNNER_TEMP/license-venv/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/license-venv/bin/pip" install -r services/licensing/requirements-test.txt PyYAML==6.0.2 pip-audit==2.10.1
+      - name: Adversarial managed-service tests
+        run: python -m unittest discover -s services/licensing/tests -v
+      - name: Android and existing source regression suite
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Build contract
+        run: python scripts/check_build_contract.py
+      - name: Audit declared production dependency graph
+        run: pip-audit -r services/licensing/requirements.txt --format json --output "$RUNNER_TEMP/license-audit.json"
+      - name: Preserve dependency audit evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-license-dependency-audit
+          path: ${{ runner.temp }}/license-audit.json
+          retention-days: 14
+          if-no-files-found: warn

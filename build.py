@@ -118,6 +118,9 @@ def make_parser():
              'Available: [Not used for now]. Special value is "ALL" and empty "". Default is empty.')
     parser.add_argument('--flutter', action='store_true',
                         help='Build flutter package', default=False)
+    parser.add_argument('--windows-input-plus', action='store_true',
+                        help='Enable Windows Flutter user-mode input compatibility profiles',
+                        default=False)
     parser.add_argument(
         '--hwcodec',
         action='store_true',
@@ -320,6 +323,10 @@ def get_features(args):
         features.append('vram')
     if args.flutter:
         features.append('flutter')
+    if args.windows_input_plus:
+        if not windows or not args.flutter:
+            raise ValueError('--windows-input-plus requires a Windows Flutter build')
+        features.append('windows-user-input-plus')
     if args.unix_file_copy_paste:
         features.append('unix-file-copy-paste')
     if args.drm:
@@ -975,12 +982,12 @@ def main():
         print(feats)
         return
 
+    features = ','.join(get_features(args))
     if os.path.exists(exe_path):
         os.unlink(exe_path)
     if os.path.isfile('/usr/bin/pacman'):
         system2('git checkout src/ui/common.tis')
     version = get_version()
-    features = ','.join(get_features(args))
     flutter = args.flutter
     if not flutter:
         system2('python3 res/inline-sciter.py')

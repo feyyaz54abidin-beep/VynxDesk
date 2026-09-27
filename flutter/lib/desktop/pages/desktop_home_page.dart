@@ -1,3 +1,4 @@
+import 'package:flutter_hbb/common/brand_links.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
@@ -435,7 +436,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://rustdesk.com/download');
+        final Uri url = Uri.parse(VynxBrand.downloads);
         await launchUrl(url);
       };
       if (isToUpdate) {
@@ -451,7 +452,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           closeButton: true,
           help: isToUpdate ? 'Changelog' : null,
           link: isToUpdate
-              ? 'https://github.com/rustdesk/rustdesk/releases/tag/${bind.mainGetNewVersion()}'
+              ? VynxBrand.changelog
               : null);
     }
     if (systemError.isNotEmpty) {

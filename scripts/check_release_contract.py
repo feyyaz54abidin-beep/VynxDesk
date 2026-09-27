@@ -4,7 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
+import ipaddress
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -106,6 +110,52 @@ def require_release_environment() -> None:
         raise ContractError(
             "missing required release environment: " + ", ".join(missing)
         )
+
+    host = os.environ[RELEASE_ENV[0]]
+    key = os.environ[RELEASE_ENV[1]]
+    if host != host.strip() or any(char.isspace() for char in host):
+        raise ContractError("invalid production rendezvous host")
+    # Accept a DNS name or IP literal, optionally followed by a TCP port.
+    port = None
+    if host.startswith("["):
+        match = re.fullmatch(r"\[([^]]+)\](?::([0-9]+))?", host)
+        if not match:
+            raise ContractError("invalid production rendezvous host")
+        hostname, port = match.groups()
+        try:
+            ipaddress.IPv6Address(hostname)
+        except ValueError as error:
+            raise ContractError("invalid production rendezvous host") from None
+    else:
+        hostname, separator, port_text = host.partition(":")
+        if separator:
+            port = port_text
+        if hostname.endswith(".."):
+            raise ContractError("invalid production rendezvous host")
+        if re.fullmatch(r"[0-9.]+", hostname):
+            try:
+                ipaddress.IPv4Address(hostname)
+            except ValueError:
+                raise ContractError("invalid production rendezvous address") from None
+        labels = hostname.rstrip(".").split(".")
+        if len(hostname) > 253 or not all(
+            re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label)
+            for label in labels
+        ):
+            raise ContractError("invalid production rendezvous host")
+    if port is not None and (len(port) > 5 or not port.isascii() or not port.isdigit() or not 1 <= int(port) <= 65535):
+        raise ContractError("invalid production rendezvous port")
+    normalized_host = hostname.rstrip(".").lower()
+    if normalized_host == "rustdesk.com" or normalized_host.endswith(".rustdesk.com"):
+        raise ContractError("production releases must not use the upstream debug service")
+    try:
+        decoded_key = base64.b64decode(key, validate=True)
+    except (ValueError, binascii.Error) as error:
+        raise ContractError("invalid production rendezvous public key encoding") from None
+    if len(decoded_key) != 32 or decoded_key == bytes(32) or base64.b64encode(decoded_key).decode("ascii") != key:
+        raise ContractError("production rendezvous public key must be canonical base64 for a nonzero 32-byte key")
+    if key == "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=":
+        raise ContractError("production releases must not use the upstream debug public key")
 
 
 def require_clean_root() -> None:

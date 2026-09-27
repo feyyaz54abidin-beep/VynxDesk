@@ -1,0 +1,29 @@
+# Install only after DNS and a valid certificate exist. Does not replace vynx.com.tr.
+server {
+    listen 80;
+    server_name desk-api.vynx.com.tr;
+    # Never redirect a credential-bearing API POST to another origin.
+    location / { return 400; }
+}
+server {
+    listen 443 ssl;
+    server_name desk-api.vynx.com.tr;
+    ssl_certificate /etc/letsencrypt/live/desk-api.vynx.com.tr/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/desk-api.vynx.com.tr/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    access_log off;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    location / {
+        client_max_body_size 16k;
+        client_body_timeout 10s;
+        proxy_pass http://127.0.0.1:8091;
+        proxy_set_header Host desk-api.vynx.com.tr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 15s;
+        proxy_send_timeout 15s;
+        proxy_request_buffering on;
+        proxy_buffering off;
+    }
+}

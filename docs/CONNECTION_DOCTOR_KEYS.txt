@@ -1,0 +1,39 @@
+Connection doctor
+Retry connection doctor
+Waiting for observations
+No current diagnostic data is available. This is not a successful connection test.
+Session disconnected
+The observer reports a disconnection. The cause is not known from this report.
+Observations are stale
+No recent diagnostic event was received. Cached measurements are hidden; this does not prove a disconnection.
+Connection in progress
+Wait for the session to connect. No failure cause has been established.
+Connection security is unverified
+Verify the intended peer and server identity before sharing sensitive data. This status alone does not establish whether traffic is encrypted.
+Security status is unknown
+The observer did not provide a recognized security state. Do not treat an unknown value as verified.
+View-only mode is enabled
+This session is configured for viewing. Change control permissions only with the remote user or administrator.
+Keyboard permission is disabled
+The current session does not permit keyboard control. Ask the remote user or administrator to review its permissions.
+Using a relay
+Relay routing is normal and is not a failure by itself. Compare measured quality before changing network settings.
+High reported latency
+The latest reported delay is at least 200 ms. Try a lower image-quality setting and compare; this is not an end-to-end input-latency measurement.
+Few frames reported
+A static screen can produce few frames. Check a changing image before concluding that capture or the network has failed.
+Observation limits
+Recent events may contain last-known measurements. This report does not prove that an application accepted input, that every component is healthy, or that licensing is enforced.
+Review these observations
+Observing the reported session
+Reported delay
+Lowest reported display FPS
+Target bitrate
+Report preview
+This frozen report includes only allowed status values and numeric diagnostics. No peer IDs, addresses, credentials or screen content are included. Nothing is uploaded.
+Copying uses the system clipboard. Clipboard synchronization or other apps may share its contents.
+Preview report
+Back to observations
+Copy report
+Report copied
+Copy failed. Select the report text or try again.

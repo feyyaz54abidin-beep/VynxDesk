@@ -1,0 +1,13 @@
+{
+  "name": "VynxDesk",
+  "website": "https://vynx.com.tr/",
+  "product": "https://vynx.com.tr/vynxdesk/",
+  "downloads": "https://vynx.com.tr/vynxdesk/#downloads",
+  "privacy": "https://vynx.com.tr/vynxdesk/privacy.html",
+  "pricing": "https://vynx.com.tr/vynxdesk/#service",
+  "changelog": "https://vynx.com.tr/vynxdesk/#changes",
+  "source": "https://vynx.com.tr/vynxdesk/#source",
+  "support": "https://vynx.com.tr/",
+  "managed_api": "https://desk-api.vynx.com.tr",
+  "relay_host": "desk-relay.vynx.com.tr"
+}

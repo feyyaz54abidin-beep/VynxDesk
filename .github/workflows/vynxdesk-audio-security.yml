@@ -1,0 +1,45 @@
+name: VynxDesk audio dependency security
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'src/client.rs'
+      - 'scripts/ringbuf_audio_probe.py'
+      - '.github/workflows/vynxdesk-audio-security.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audio-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audio-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        with:
+          toolchain: '1.88'
+      - name: Test extracted production audio buffer and dependency panic safety
+        run: python3 scripts/ringbuf_audio_probe.py
+      - name: Install pinned audit tool
+        run: cargo install cargo-audit --version 0.22.2 --locked
+      - name: Audit complete root lockfile without ignores
+        run: cargo audit --json > "$RUNNER_TEMP/rust-audit.json"
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: vynxdesk-audio-dependency-audit
+          path: ${{ runner.temp }}/rust-audit.json
+          retention-days: 14
+          if-no-files-found: warn

@@ -35,6 +35,7 @@ if (Test-Path -LiteralPath $outputRoot) {
 
 $requiredBuildItems = @(
     "vynxdesk.exe",
+    "librustdesk.dll",
     "flutter_windows.dll",
     "data\flutter_assets"
 )
@@ -58,14 +59,17 @@ if (-not $virtualDisplayDll) {
 }
 
 $null = New-Item -ItemType Directory -Path $outputRoot
-Copy-Item -Path (Join-Path $buildRoot "*") -Destination $outputRoot -Recurse -Force
+Get-ChildItem -LiteralPath $buildRoot -Force | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $outputRoot -Recurse -Force
+}
 Copy-Item -LiteralPath $virtualDisplayDll -Destination (Join-Path $outputRoot "dylib_virtual_display.dll") -Force
 
 $distributionFiles = @(
     "LICENCE",
     "NOTICE",
     "PRIVACY.md",
-    "res\install-vynxdesk.ps1"
+    "res\install-vynxdesk.ps1",
+    "res\diagnose-input.ps1"
 )
 foreach ($relativePath in $distributionFiles) {
     $source = Join-Path $projectRoot $relativePath
@@ -81,6 +85,10 @@ $binaryFiles = Get-ChildItem -LiteralPath $outputRoot -File -Recurse |
 $untrusted = @()
 foreach ($file in $binaryFiles) {
     $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
+    if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid -and
+        $signature.Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
+        throw "Invalid binary signature: $($file.Name): $($signature.Status). AllowUnsigned permits only absent signatures, never damaged or untrusted signatures."
+    }
     if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
         $untrusted += [PSCustomObject]@{
             File = $file.FullName.Substring($outputRoot.Length + 1)
@@ -120,7 +128,10 @@ $hashLines | Set-Content -LiteralPath (Join-Path $outputRoot "SHA256SUMS.txt") -
 
 $archivePath = "$outputRoot.zip"
 if (-not $SkipArchive) {
-    Compress-Archive -LiteralPath (Join-Path $outputRoot "*") -DestinationPath $archivePath
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::CreateFromDirectory(
+        $outputRoot, $archivePath, [IO.Compression.CompressionLevel]::Optimal, $false
+    )
 }
 
 Write-Output "Windows desktop package prepared: $outputRoot"
