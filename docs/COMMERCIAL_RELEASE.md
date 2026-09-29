@@ -93,6 +93,13 @@ The script builds only the Rust library target and stages `librustdesk.so` and
 `libc++_shared.so` under the arm64 Android `jniLibs` directory. Configure the
 Android release keystore before producing a signed APK or AAB.
 
+After every APK build, verify that each packaged Flutter ABI has the matching
+VynxDesk core and C++ runtime before signing or distribution:
+
+```powershell
+python .\scripts\check_android_apk.py .\flutter\build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
+```
+
 ## License and source
 
 - Ship `LICENCE`, `NOTICE`, and `PRIVACY.md` beside the download or inside the

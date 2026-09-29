@@ -4,6 +4,13 @@ import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 
+const String kVynxPortalUrl =
+    'https://vynx-commerce-staging.ko4fun-license.workers.dev/';
+const String kVynxPrivacyUrl =
+    'https://vynx-commerce-staging.ko4fun-license.workers.dev/#/gizlilik';
+const String kVynxUpdatesUrl =
+    'https://vynx-commerce-staging.ko4fun-license.workers.dev/#/guncellemeler';
+
 const int kMaxVirtualDisplayCount = 4;
 const int kAllVirtualDisplay = -1;
 

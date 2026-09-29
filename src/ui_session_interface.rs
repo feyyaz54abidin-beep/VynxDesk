@@ -110,8 +110,12 @@ impl ConnectionRoundState {
         self.round
     }
 
-    pub fn set_connected(&mut self) {
+    pub fn set_connected(&mut self, round: u32) -> bool {
+        if self.round != round || !matches!(self.state, ConnectionState::Connecting) {
+            return false;
+        }
         self.state = ConnectionState::Connected;
+        true
     }
 
     pub fn is_round_gt(&self, round: u32) -> bool {
@@ -172,6 +176,18 @@ mod connection_round_tests {
         assert!(matches!(state.state, ConnectionState::Connecting));
         assert!(state.set_disconnected(second_round));
         assert!(matches!(state.state, ConnectionState::Disconnected));
+    }
+
+    #[test]
+    fn stale_round_cannot_mark_a_new_connection_connected() {
+        let mut state = ConnectionRoundState::default();
+        let first_round = state.new_round();
+        let second_round = state.new_round();
+
+        assert!(!state.set_connected(first_round));
+        assert!(matches!(state.state, ConnectionState::Connecting));
+        assert!(state.set_connected(second_round));
+        assert!(matches!(state.state, ConnectionState::Connected));
     }
 
     #[test]

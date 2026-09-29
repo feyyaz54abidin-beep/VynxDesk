@@ -96,20 +96,18 @@ foreach ($opensslArchive in @('libssl.a', 'libcrypto.a')) {
 
 Push-Location $repoRoot
 try {
-    $metadata = cargo metadata --locked --format-version 1 | ConvertFrom-Json -AsHashtable
+    $sodiumManifest = cargo metadata --locked --format-version 1 |
+        python -c "import json, sys; data = json.load(sys.stdin); matches = [p['manifest_path'] for p in data['packages'] if p['name'] == 'libsodium-sys' and p['version'] == '0.2.7']; print(matches[0] if matches else '', end='')"
     if ($LASTEXITCODE -ne 0) {
-        throw "cargo metadata failed with exit code $LASTEXITCODE."
+        throw "Cargo metadata inspection failed with exit code $LASTEXITCODE."
     }
 } finally {
     Pop-Location
 }
-$sodiumPackage = $metadata.packages |
-    Where-Object { $_.name -eq 'libsodium-sys' -and $_.version -eq '0.2.7' } |
-    Select-Object -First 1
-if (-not $sodiumPackage) {
+if ([string]::IsNullOrWhiteSpace($sodiumManifest)) {
     throw 'libsodium-sys 0.2.7 was not found in Cargo metadata.'
 }
-$sodiumSourceRoot = Split-Path -Parent $sodiumPackage.manifest_path
+$sodiumSourceRoot = Split-Path -Parent $sodiumManifest
 $windowsSodium = Join-Path $sodiumSourceRoot 'msvc\x64\Release\v142\libsodium.lib'
 if (-not (Test-Path -LiteralPath $windowsSodium)) {
     throw "Windows host libsodium archive is missing: $windowsSodium"

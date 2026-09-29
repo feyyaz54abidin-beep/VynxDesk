@@ -6,7 +6,7 @@ import 'package:get/get.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
 class GestureIcons {
-  static const String _family = 'gestureicons';
+  static const String _family = 'GestureIcons';
 
   GestureIcons._();
 

@@ -129,6 +129,7 @@ class AudioRecordHandle(private var context: Context, private var isVideoStart: 
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     private fun captureAudio(reader: AudioReader, recorder: AudioRecord) {
         try {
             while (audioRecordStat) {

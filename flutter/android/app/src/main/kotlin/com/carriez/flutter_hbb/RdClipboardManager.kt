@@ -72,9 +72,9 @@ class RdClipboardManager(private val clipboardManager: ClipboardManager) {
             val clips = MultiClipboards.newBuilder()
             if (text != null) {
                 val content = com.google.protobuf.ByteString.copyFromUtf8(text.toString())
-                    clips.addClipboards(Clipboard.newBuilder().setFormat(ClipboardFormat.Text).setContent(content).build())
-                    count++
-                }
+                clips.addClipboards(Clipboard.newBuilder().setFormat(ClipboardFormat.Text).setContent(content).build())
+                count++
+            }
             if (html != null) {
                 val content = com.google.protobuf.ByteString.copyFromUtf8(html)
                 clips.addClipboards(Clipboard.newBuilder().setFormat(ClipboardFormat.Html).setContent(content).build())

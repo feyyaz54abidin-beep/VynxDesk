@@ -179,11 +179,6 @@ impl<T: InvokeUiSession> Remote<T> {
         .await
         {
             Ok(((mut peer, direct, pk, kcp, stream_type), (feedback, rendezvous_server))) => {
-                self.handler
-                    .connection_round_state
-                    .lock()
-                    .unwrap()
-                    .set_connected();
                 let is_secured = peer.is_secured();
                 // Only WebRTC needs refining: its label names the transport that won the race,
                 // not the family ICE ended up nominating, and it is the one path where the two
@@ -193,10 +188,6 @@ impl<T: InvokeUiSession> Remote<T> {
                 } else {
                     stream_type
                 };
-                self.handler
-                    .set_connection_type(is_secured, direct, stream_type); // flutter -> connection_ready
-                self.handler
-                    .mark_connection_ready(is_secured, direct, stream_type);
                 if !is_secured
                     && !crate::common::is_direct_ip_access(&self.handler.get_id())
                     && !client::confirm_insecure_connection(&self.handler, &mut self.receiver).await
@@ -208,6 +199,20 @@ impl<T: InvokeUiSession> Remote<T> {
                     self.handle_disconnected(round);
                     return;
                 }
+                let is_current_round = self
+                    .handler
+                    .connection_round_state
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .set_connected(round);
+                if !is_current_round {
+                    self.send_close_reason(&mut peer, "").await;
+                    return;
+                }
+                self.handler
+                    .set_connection_type(is_secured, direct, stream_type); // flutter -> connection_ready
+                self.handler
+                    .mark_connection_ready(is_secured, direct, stream_type);
                 self.handler.update_direct(Some(direct));
                 if conn_type == ConnType::DEFAULT_CONN || conn_type == ConnType::VIEW_CAMERA {
                     self.handler

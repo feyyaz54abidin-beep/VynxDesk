@@ -621,7 +621,7 @@ jobs:
           # url 2.5.8 resolves ICU 2.x manifests that require Cargo's Edition 2024 support.
           cargo -Znext-lockfile-bump update -p url --precise 2.5.0
           cargo -Znext-lockfile-bump update -p tauri-winrt-notification --precise 0.7.3
-          cargo -Znext-lockfile-bump build --locked --features inline,vram,hwcodec --release --bins
+          cargo -Znext-lockfile-bump build --locked --ignore-rust-version --features inline,vram,hwcodec --release --bins
           mkdir -p ./Release
           mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
           curl -LJ -o ./Release/sciter.dll https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x32/sciter.dll
@@ -1336,6 +1336,9 @@ jobs:
             ;;
           esac
           popd
+          python3 scripts/check_android_apk.py "rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk"
+          lint_variant="${{ matrix.job.reltype }}"
+          ./flutter/android/gradlew -p ./flutter/android ":app:lint${lint_variant^}"
           mkdir -p signed-apk; pushd signed-apk
           mv ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk .
 
@@ -1523,6 +1526,9 @@ jobs:
           popd
           mkdir -p signed-apk
           mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+          python3 scripts/check_android_apk.py "signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk"
+          lint_variant="${{ env.reltype }}"
+          ./flutter/android/gradlew -p ./flutter/android ":app:lint${lint_variant^}"
 
       # https://github.com/r0adkll/sign-android-release/issues/84#issuecomment-1889636075
       - name: Setup sign tool version variable

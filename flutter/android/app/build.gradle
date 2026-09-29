@@ -84,6 +84,11 @@ protobuf {
 android {
     namespace "com.carriez.flutter_hbb"
     compileSdkVersion 36
+    lint {
+        // Flutter owns local.properties and rewrites valid Windows paths using
+        // Java-properties escaping that Android Lint misclassifies.
+        disable 'PropertyEscape'
+    }
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
 
@@ -116,12 +121,39 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules'
         }
     }
+}
+
+tasks.register("validateReleaseSigning") {
+    doLast {
+        if (android.buildTypes.release.signingConfig?.name == "debug") {
+            logger.lifecycle("Release artifact is using the explicit CI debug-signing profile.")
+            return
+        }
+        def requiredSigningProperties = ['keyAlias', 'keyPassword', 'storeFile', 'storePassword']
+        def missingSigningProperties = requiredSigningProperties.findAll {
+            !keystoreProperties[it]?.toString()?.trim()
+        }
+        if (!missingSigningProperties.isEmpty()) {
+            throw new GradleException(
+                "Android release signing is not configured. Missing key.properties values: " +
+                missingSigningProperties.join(', ')
+            )
+        }
+        def configuredStoreFile = file(keystoreProperties['storeFile'])
+        if (!configuredStoreFile.isFile()) {
+            throw new GradleException(
+                "Android release keystore does not exist: ${configuredStoreFile.path}"
+            )
+        }
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(tasks.named("validateReleaseSigning"))
 }
 
 flutter {
